@@ -2,6 +2,14 @@
 name = "wp-model-core"
 version = "0.7.0"
 edition = "2024"
+description = "Typed data model crate providing Value, Field, and Record primitives for the Warp PASE stack."
+license = "Elastic-2.0"
+readme = "README.md"
+categories = ["data-structures", "encoding"]
+keywords = ["warp", "pase", "data-model", "serde", "record"]
+repository = "https://github.com/wp-labs/wp-model-core"
+homepage = "https://github.com/wp-labs/wp-model-core"
+documentation = "https://docs.rs/wp-model-core"
 
 [lib]
 name = "wp_model_core"
