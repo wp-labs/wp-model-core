@@ -1,39 +1,19 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Crates in this repo are Rust libraries: `wp-connector-api/`, `wp-ctrl-api/`, `wp-data-model/`, `wp-enrich-api/`, `wp-parse-api/`.
-- Each crate keeps code in `src/` with unit tests co-located via `#[cfg(test)]`. Some crates depend on siblings in the top-level `warp-pase-system` workspace (e.g., `../../wp-data-model`).
-- No binaries here; these crates define traits, models, and helpers consumed by other services.
+`wp-model-core` is a single Rust library crate. Core exports live in `src/lib.rs`, domain models under `src/model/`, and reusable behaviors inside `src/traits.rs`. Module-level docs (for example `src/model/README.md`) capture design notes and should be kept in sync with the code. Unit tests sit beside their targets via `#[cfg(test)] mod tests`, so keep new scenarios close to the implementation they verify. Workspace assets such as specs or diagrams belong in `docs/`, while generated build outputs remain under `target/`.
 
 ## Build, Test, and Development Commands
-- From a crate directory (recommended when working only on that crate):
-  - `cargo build` — compile the library
-  - `cargo test` — run unit tests
-  - `cargo doc --open` — build docs locally
-- From the workspace root (warp-pase-system), target a crate by package name:
-  - `cargo build -p wp-parse-api`
-  - `cargo test  -p wp-data-model`
-- Lint/format before committing:
-  - `cargo fmt --all`
-  - `cargo clippy --all-targets --all-features -D warnings`
+Use `cargo check` for fast type validation during iteration, `cargo build` for a full release-ready compile, and `cargo test` to run the co-located unit suite. Formatting and linting are mandatory before sending changes: `cargo fmt --all` enforces consistent layout and `cargo clippy --all-targets --all-features -D warnings` keeps the public API tidy. `cargo doc --open` is handy when reviewing trait contracts or complex generics.
 
 ## Coding Style & Naming Conventions
-- Rust 2021 edition; use `rustfmt` defaults (4-space indent, max width defaults).
-- Types/traits: `CamelCase`; functions/modules: `snake_case`; constants: `SCREAMING_SNAKE_CASE`.
-- Prefer returning the workspace error type over panicking; document public APIs with `///` and crate/module docs with `//!`.
+The crate targets Rust 2024 with the default `rustfmt` profile (4-space indent, 100-column guidance). Follow idiomatic naming: types and traits in `CamelCase`, modules/functions in `snake_case`, constants in `SCREAMING_SNAKE_CASE`. Prefer explicit `Result<T, Error>` flows surfaced through the shared `thiserror` enums rather than `unwrap`/`expect`. Public APIs need `///` docs, and crate/module headers should start with `//!` narratives.
 
 ## Testing Guidelines
-- Unit tests live next to code (`mod tests { ... }`); name tests `test_*` for clarity.
-- Async tests use `#[tokio::test]` where applicable.
-- Optional fuzzing in `wp-data-model/fuzz/` with `cargo fuzz run <target>` (requires `cargo-fuzz`).
+Add new tests inside the relevant module, naming them `test_*` for quick `cargo test test_field_builder` filters. Favor lightweight unit tests that assert serialization (`serde`) and comparison behavior because higher layers consume this crate as a dependency. When adding value or metadata types, mirror the existing pattern in `src/model/types/` and extend the associated tests before touching downstream callers.
 
 ## Commit & Pull Request Guidelines
-- Use Conventional Commits style; scope with the crate when helpful:
-  - Example: `feat(wp-parse-api): add RawData parser for bytes input`
-- PRs should include: a clear description, linked issues, tests for behavior changes, and any relevant screenshots/logs.
-- Before opening a PR, ensure `cargo fmt`, `cargo clippy`, and `cargo test` pass for the affected crates (or targeted `-p` in the workspace).
+Write Conventional Commits with an optional crate scope, e.g., `feat(model): add mac address datatype`. Each PR should describe the motivation, link any tracking issue, and call out schema or serialization changes. Attach `cargo fmt`, `cargo clippy`, and `cargo test` results (or explain gaps) so reviewers can focus on semantics.
 
 ## Security & Configuration Tips
-- Do not commit secrets or sample keys; treat all inputs as untrusted.
-- Avoid `unwrap`/`expect` in library code; return `Result` with meaningful errors.
-- Keep cross-crate paths aligned with the workspace; prefer workspace versions/deps when available.
+Never check in sample secrets or production payloads. Treat all inputs as untrusted; rely on the provided validator helpers and return meaningful errors instead of panicking. Keep dependency versions aligned with `Cargo.lock`, and avoid ad-hoc feature flags without documenting them in `docs/`.
