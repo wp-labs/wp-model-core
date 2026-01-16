@@ -51,6 +51,8 @@ pub enum DataType {
     Base64,
     #[serde(rename = "kv")]
     KV,
+    #[serde(rename = "kvarr")]
+    KvArr,
     #[serde(rename = "json")]
     Json,
     #[serde(rename = "exact_json")]
@@ -98,6 +100,7 @@ pub const SN: &str = "sn";
 pub const PORT: &str = "port";
 pub const HEXDIGIT: &str = "hex";
 pub const KV: &str = "kv";
+pub const KVARR: &str = "kvarr";
 pub const JSON: &str = "json";
 pub const EXACT_JSON: &str = "exact_json";
 pub const HTTP_REQUEST: &str = "http/request";
@@ -152,6 +155,7 @@ impl DataType {
             SN => Ok(DataType::SN),
             PORT => Ok(DataType::Port),
             HEXDIGIT => Ok(DataType::Hex),
+            KVARR => Ok(DataType::KvArr),
             KV => Ok(DataType::KV),
             JSON => Ok(DataType::Json),
             EXACT_JSON => Ok(DataType::ExactJson),
@@ -220,6 +224,7 @@ impl DataType {
             DataType::SN => SN,
             DataType::Port => PORT,
             DataType::Hex => HEXDIGIT,
+            DataType::KvArr => KVARR,
             DataType::KV => KV,
             DataType::Json => JSON,
             DataType::ExactJson => EXACT_JSON,

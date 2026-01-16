@@ -1,6 +1,6 @@
 [package]
 name = "wp-model-core"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2024"
 description = "Typed data model crate providing Value, Field, and Record primitives for the Warp PASE stack."
 license = "Elastic-2.0"
