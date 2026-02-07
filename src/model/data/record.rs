@@ -87,10 +87,7 @@ where
             T::from_ip("ip", IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             T::from_chars("chars", "test"),
         ];
-        Self {
-            id: 0,
-            items: data,
-        }
+        Self { id: 0, items: data }
     }
 }
 
