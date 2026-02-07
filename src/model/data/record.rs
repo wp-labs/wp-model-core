@@ -26,12 +26,14 @@ pub trait RecordItemFactory {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Record<T> {
+    pub id: u64,
     pub items: Vec<T>,
 }
 
 impl<T> Default for Record<T> {
     fn default() -> Self {
         Self {
+            id: 0,
             items: Vec::with_capacity(10),
         }
     }
@@ -39,7 +41,10 @@ impl<T> Default for Record<T> {
 
 impl<T> From<Vec<T>> for Record<T> {
     fn from(value: Vec<T>) -> Self {
-        Self { items: value }
+        Self {
+            id: 0,
+            items: value,
+        }
     }
 }
 
@@ -64,7 +69,10 @@ where
     T: RecordItem + RecordItemFactory,
 {
     pub fn set_id(&mut self, id: u64) {
-        // 如果已存在 wp_msg_id 字段，避免重复追加
+        // 设置 id 字段
+        self.id = id;
+
+        // 如果已存在 wp_event_id 字段，避免重复追加
         if self.items.iter().any(|f| f.get_name() == WP_EVENT_ID) {
             return;
         }
@@ -79,7 +87,10 @@ where
             T::from_ip("ip", IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
             T::from_chars("chars", "test"),
         ];
-        Self { items: data }
+        Self {
+            id: 0,
+            items: data,
+        }
     }
 }
 
@@ -309,6 +320,8 @@ mod tests {
 
         record.set_id(12345);
 
+        // ID should be set in both the id field and added to items
+        assert_eq!(record.id, 12345);
         assert_eq!(record.items.len(), original_len + 1);
         // ID should be inserted at position 0
         assert_eq!(record.items[0].get_name(), WP_EVENT_ID);
@@ -320,12 +333,14 @@ mod tests {
         let mut record = make_test_record();
 
         record.set_id(100);
+        assert_eq!(record.id, 100);
         let len_after_first = record.items.len();
 
-        // Try to set ID again - should not add duplicate
+        // Try to set ID again - should update id field but not add duplicate to items
         record.set_id(200);
+        assert_eq!(record.id, 200);
         assert_eq!(record.items.len(), len_after_first);
-        // Original ID should remain
+        // Original ID in items should remain
         assert_eq!(record.get_value(WP_EVENT_ID), Some(&Value::Digit(100)));
     }
 
