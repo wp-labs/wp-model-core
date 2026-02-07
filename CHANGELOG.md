@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-02-07
+
+### Added
+
+- Add `id: u64` field to `Record<T>` struct for direct access to record ID
+- Update `set_id()` method to set both the new `id` field and maintain backward compatibility by storing ID in items collection as `wp_event_id`
+
 ## [0.7.1] - 2026-01-16
 
 ### Added
@@ -27,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTTP type support (request, status, agent, method)
 - Array type with subtype specification
 
-[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/wp-labs/wp-model-core/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/wp-labs/wp-model-core/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/wp-labs/wp-model-core/releases/tag/v0.7.0
