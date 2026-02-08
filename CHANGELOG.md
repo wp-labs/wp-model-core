@@ -7,14 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.0] - 2026-02-08
+## [0.8.1] - 2026-02-09
 
 ### ⚠️ BREAKING CHANGES
 
 - **DataRecord type changed from `Record<Field<Value>>` to `Record<FieldStorage>`**
-  - This enables mixed storage mode with both shared (Arc) and owned fields
+  - Enables mixed storage mode with both shared (Arc) and owned fields
   - Static/constant fields can now be shared with zero-copy semantics
-  - See Migration Guide below for upgrade instructions
+
+- **Value::Array changed from `Vec<Field<Value>>` to `Vec<FieldStorage>`**
+  - Enables zero-copy sharing for array elements
+  - Use `.into_iter().collect()` to convert from `Vec<Field<Value>>`
+
+- **ObjectValue internal storage changed from `BTreeMap<SmolStr, Field<Value>>` to `BTreeMap<SmolStr, FieldStorage>`**
+  - Enables zero-copy sharing for object fields
+  - Automatic conversion from old format via `From` trait
 
 - **License changed from Elastic-2.0 to Apache-2.0**
   - More permissive open source license
@@ -35,15 +42,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `storage_stats() -> (usize, usize)` - Get count of shared vs owned fields
   - `into_owned_record() -> Record<Field<Value>>` - Convert to fully owned record
 
+- **Automatic conversions** to ease migration:
+  - `impl From<Field<Value>> for FieldStorage` - Auto-wrap fields
+  - `impl FromIterator<Field<Value>> for Vec<FieldStorage>` - Support `.collect()`
+  - `impl From<BTreeMap<SmolStr, Field<Value>>> for ObjectValue` - Auto-convert maps
+
+- **Field type is now publicly exported** from `wp_model_core::model`
+
 ### Performance Improvements
 
 - Static field cloning: 50-500ns → ~5ns (Arc reference count increment)
 - Reduced memory usage: 50-90% for high static field ratio scenarios
 - Multi-stage pipeline processing: 50-97% performance improvement
+- Array/Object cloning: Now supports zero-copy via Arc-wrapped fields
 
 ### Migration Guide
 
-**No changes required for basic usage** - existing code continues to work:
+#### DataRecord (Basic usage - no changes required)
+
+Existing code continues to work:
 
 ```rust
 use wp_model_core::model::DataRecord;
@@ -52,7 +69,7 @@ use wp_model_core::model::DataRecord;
 let mut record = DataRecord::default();
 ```
 
-**To use new mixed storage features**:
+#### Using mixed storage features
 
 ```rust
 use std::sync::Arc;
@@ -71,7 +88,35 @@ record.push_owned(Field::new(DataType::Digit, "count", Value::from(42)));
 record.append(FieldStorage::from_digit("age", 30));
 ```
 
-**For code that expects `Record<Field<Value>>`**:
+#### Value::Array
+
+Use `.into_iter().collect()` for automatic conversion:
+
+```rust
+// Before
+let arr = Value::Array(vec![field1, field2]);
+
+// After
+let arr = Value::Array(vec![field1, field2].into_iter().collect());
+```
+
+#### ObjectValue
+
+Automatic conversion via `From` trait:
+
+```rust
+// Before
+let mut obj = ObjectValue::new();
+obj.insert("key".into(), field);
+
+// After (same API, different internal storage)
+let mut obj = ObjectValue::new();
+obj.insert("key".into(), field.into());  // or FieldStorage::Owned(field)
+```
+
+#### Converting to fully owned record
+
+For code that expects `Record<Field<Value>>`:
 
 ```rust
 // Convert DataRecord to fully owned record
@@ -105,8 +150,8 @@ let owned_record = record.into_owned_record();
 - HTTP type support (request, status, agent, method)
 - Array type with subtype specification
 
-[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.8.0...HEAD
-[0.8.0]: https://github.com/wp-labs/wp-model-core/compare/v0.7.2...v0.8.0
+[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/wp-labs/wp-model-core/compare/v0.7.2...v0.8.1
 [0.7.2]: https://github.com/wp-labs/wp-model-core/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/wp-labs/wp-model-core/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/wp-labs/wp-model-core/releases/tag/v0.7.0

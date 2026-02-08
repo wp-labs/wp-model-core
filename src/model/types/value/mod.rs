@@ -5,6 +5,7 @@ mod primitive;
 use crate::model::DataField;
 use crate::model::FValueStr;
 use crate::model::data::field::Field;
+use crate::model::data::storage::FieldStorage;
 use crate::traits::AsValueRef;
 use smol_str::SmolStr;
 use std::fmt::{Debug, Display, Formatter};
@@ -42,9 +43,16 @@ pub enum Value {
     // 复合类型
     //Obj(BTreeMap<String, Field<Value>>),
     Obj(ObjectValue),
-    Array(Vec<Field<Value>>),
+    Array(Vec<FieldStorage>),
     Symbol(SmolStr),
     Ignore(IgnoreT),
+}
+
+// 自动转换支持（降低迁移成本）
+impl FromIterator<Field<Value>> for Vec<FieldStorage> {
+    fn from_iter<I: IntoIterator<Item = Field<Value>>>(iter: I) -> Self {
+        iter.into_iter().map(FieldStorage::Owned).collect()
+    }
 }
 
 impl AsValueRef<Value> for Value {
@@ -190,7 +198,7 @@ impl From<IpNetValue> for Value {
 
 impl From<Vec<DataField>> for Value {
     fn from(value: Vec<DataField>) -> Self {
-        Self::Array(value)
+        Self::Array(value.into_iter().collect())
     }
 }
 

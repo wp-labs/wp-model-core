@@ -448,6 +448,6 @@ mod tests {
 
         // Non-empty
         let arr = vec![Field::from_digit("x", 1)];
-        assert!(!Value::Array(arr).is_empty());
+        assert!(!Value::Array(arr.into_iter().collect()).is_empty());
     }
 }

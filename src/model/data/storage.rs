@@ -276,6 +276,13 @@ impl LevelFormatAble for FieldStorage {
     }
 }
 
+// 自动转换（降低迁移成本）
+impl From<Field<Value>> for FieldStorage {
+    fn from(field: Field<Value>) -> Self {
+        FieldStorage::Owned(field)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

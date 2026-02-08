@@ -1,4 +1,5 @@
 use crate::model::DataField;
+use crate::model::FieldStorage;
 
 use super::Value;
 use smol_str::SmolStr;
@@ -9,7 +10,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct ObjectValue(pub BTreeMap<SmolStr, DataField>);
+pub struct ObjectValue(pub BTreeMap<SmolStr, FieldStorage>);
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -31,15 +32,15 @@ impl ObjectValue {
         ObjectValue(BTreeMap::new())
     }
 
-    pub fn insert<S: Into<SmolStr>>(&mut self, key: S, value: DataField) {
+    pub fn insert<S: Into<SmolStr>>(&mut self, key: S, value: FieldStorage) {
         self.0.insert(key.into(), value);
     }
 
-    pub fn get(&self, key: &str) -> Option<&DataField> {
+    pub fn get(&self, key: &str) -> Option<&FieldStorage> {
         self.0.get(key)
     }
 
-    pub fn get_mut(&mut self, key: &str) -> Option<&mut DataField> {
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut FieldStorage> {
         self.0.get_mut(key)
     }
 }
@@ -51,7 +52,7 @@ impl Display for ObjectValue {
 }
 
 impl Deref for ObjectValue {
-    type Target = BTreeMap<SmolStr, DataField>;
+    type Target = BTreeMap<SmolStr, FieldStorage>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -62,4 +63,16 @@ impl DerefMut for ObjectValue {
         &mut self.0
     }
 }
+
+// 自动转换支持（降低迁移成本）
+impl From<BTreeMap<SmolStr, DataField>> for ObjectValue {
+    fn from(map: BTreeMap<SmolStr, DataField>) -> Self {
+        ObjectValue(
+            map.into_iter()
+                .map(|(k, v)| (k, FieldStorage::Owned(v)))
+                .collect(),
+        )
+    }
+}
+
 use serde::{Deserialize, Serialize};
