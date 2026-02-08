@@ -1,4 +1,5 @@
 use std::fmt::Formatter;
+use crate::model::data::record::RecordItem;
 
 pub struct MetaFmt<T>(pub T);
 

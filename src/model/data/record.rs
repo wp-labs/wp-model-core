@@ -6,8 +6,10 @@ use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::fmt::{Display, Formatter};
 use std::net::{IpAddr, Ipv4Addr};
+use std::sync::Arc;
 
 use super::field::Field;
+use super::storage::FieldStorage;
 pub const WP_EVENT_ID: &str = "wp_event_id";
 /// 记录中每一项需要暴露的行为
 pub trait RecordItem {
@@ -176,19 +178,132 @@ where
     }
 }
 
+// Convenience methods for Record<FieldStorage> (DataRecord with mixed storage)
+impl Record<FieldStorage> {
+    /// Push a shared field (Arc-wrapped) to the record
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    /// use wp_model_core::model::{DataRecord, Field, Value, DataType, FieldStorage};
+    ///
+    /// let mut record = DataRecord::default();
+    /// let field = Arc::new(Field::new(DataType::Chars, "app_name", Value::from("myapp")));
+    /// record.push_shared(field);
+    /// ```
+    pub fn push_shared(&mut self, field: Arc<Field<Value>>) {
+        self.items.push(FieldStorage::Shared(field));
+    }
+
+    /// Push an owned field to the record
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use wp_model_core::model::{DataRecord, Field, Value, DataType};
+    ///
+    /// let mut record = DataRecord::default();
+    /// let field = Field::new(DataType::Digit, "count", Value::from(42));
+    /// record.push_owned(field);
+    /// ```
+    pub fn push_owned(&mut self, field: Field<Value>) {
+        self.items.push(FieldStorage::Owned(field));
+    }
+
+    /// Get a reference to the underlying field by index
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use wp_model_core::model::{DataRecord, Field, Value, DataType};
+    ///
+    /// let mut record = DataRecord::default();
+    /// let field = Field::new(DataType::Digit, "x", Value::from(10));
+    /// record.push_owned(field);
+    ///
+    /// let retrieved = record.get_field(0);
+    /// assert!(retrieved.is_some());
+    /// assert_eq!(retrieved.unwrap().get_name(), "x");
+    /// ```
+    pub fn get_field(&self, index: usize) -> Option<&Field<Value>> {
+        self.items.get(index).map(|s| s.as_field())
+    }
+
+    /// Get statistics about storage types (shared vs owned)
+    ///
+    /// Returns (shared_count, owned_count)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    /// use wp_model_core::model::{DataRecord, Field, Value, DataType};
+    ///
+    /// let mut record = DataRecord::default();
+    /// let static_field = Arc::new(Field::new(DataType::Chars, "static", Value::from("val")));
+    /// record.push_shared(static_field);
+    ///
+    /// let dynamic_field = Field::new(DataType::Digit, "dynamic", Value::from(10));
+    /// record.push_owned(dynamic_field);
+    ///
+    /// let (shared, owned) = record.storage_stats();
+    /// assert_eq!(shared, 1);
+    /// assert_eq!(owned, 1);
+    /// ```
+    pub fn storage_stats(&self) -> (usize, usize) {
+        let mut shared_count = 0;
+        let mut owned_count = 0;
+        for item in &self.items {
+            match item {
+                FieldStorage::Shared(_) => shared_count += 1,
+                FieldStorage::Owned(_) => owned_count += 1,
+            }
+        }
+        (shared_count, owned_count)
+    }
+
+    /// Convert to a fully owned record (Record<Field<Value>>)
+    ///
+    /// This is useful when you need to pass the record to code that expects
+    /// the old Record<Field<Value>> type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use wp_model_core::model::{DataRecord, Field, Value, DataType};
+    ///
+    /// let mut record = DataRecord::default();
+    /// let field = Field::new(DataType::Digit, "x", Value::from(10));
+    /// record.push_owned(field);
+    ///
+    /// let owned_record = record.into_owned_record();
+    /// assert_eq!(owned_record.items.len(), 1);
+    /// ```
+    pub fn into_owned_record(self) -> Record<Field<Value>> {
+        Record {
+            id: self.id,
+            items: self.items
+                .into_iter()
+                .map(|storage| storage.into_owned())
+                .collect(),
+        }
+    }
+}
+
 // ValueGetter impl removed from core; use function-style adapters in extension crates.
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{DataField, DataRecord};
+    use crate::model::{DataField, DataRecord, FieldStorage};
     use std::net::Ipv4Addr;
 
     fn make_test_record() -> DataRecord {
         let fields = vec![
-            Field::from_chars("name", "Alice"),
-            Field::from_digit("age", 30),
-            Field::from_ip("ip", IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))),
+            FieldStorage::from_chars("name", "Alice"),
+            FieldStorage::from_digit("age", 30),
+            FieldStorage::from_ip("ip", IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))),
         ];
         Record::from(fields)
     }
@@ -203,7 +318,7 @@ mod tests {
 
     #[test]
     fn test_record_from_vec() {
-        let fields: Vec<DataField> = vec![Field::from_digit("x", 1), Field::from_digit("y", 2)];
+        let fields: Vec<FieldStorage> = vec![FieldStorage::from_digit("x", 1), FieldStorage::from_digit("y", 2)];
         let record: DataRecord = Record::from(fields);
         assert_eq!(record.items.len(), 2);
     }
@@ -273,18 +388,18 @@ mod tests {
         let mut record: DataRecord = Record::default();
         assert_eq!(record.items.len(), 0);
 
-        record.append(Field::from_digit("count", 100));
+        record.append(FieldStorage::from_digit("count", 100));
         assert_eq!(record.items.len(), 1);
 
-        record.append(Field::from_chars("msg", "hello"));
+        record.append(FieldStorage::from_chars("msg", "hello"));
         assert_eq!(record.items.len(), 2);
     }
 
     #[test]
     fn test_record_merge() {
-        let mut record1: DataRecord = Record::from(vec![Field::from_digit("a", 1)]);
+        let mut record1: DataRecord = Record::from(vec![FieldStorage::from_digit("a", 1)]);
         let record2: DataRecord =
-            Record::from(vec![Field::from_digit("b", 2), Field::from_digit("c", 3)]);
+            Record::from(vec![FieldStorage::from_digit("b", 2), FieldStorage::from_digit("c", 3)]);
 
         record1.merge(record2);
         assert_eq!(record1.items.len(), 3);
@@ -361,20 +476,40 @@ mod tests {
         assert_eq!(field.get_value(), &Value::Digit(20));
     }
 
+    // ========== FieldStorage RecordItem tests ==========
+
+    #[test]
+    fn test_field_storage_as_record_item() {
+        let storage: FieldStorage = FieldStorage::from_chars("key", "value");
+
+        // Test RecordItem trait methods
+        assert_eq!(storage.get_name(), "key");
+        assert_eq!(storage.get_meta(), &DataType::Chars);
+        assert_eq!(storage.get_value(), &Value::Chars("value".into()));
+    }
+
+    #[test]
+    fn test_field_storage_record_item_get_value_mut() {
+        let mut storage: FieldStorage = FieldStorage::from_digit("num", 10);
+
+        *storage.get_value_mut() = Value::Digit(20);
+        assert_eq!(storage.get_value(), &Value::Digit(20));
+    }
+
     // ========== RecordItemFactory trait tests ==========
 
     #[test]
     fn test_record_item_factory() {
-        let digit: DataField = <DataField as RecordItemFactory>::from_digit("n", 42);
+        let digit: FieldStorage = <FieldStorage as RecordItemFactory>::from_digit("n", 42);
         assert_eq!(digit.get_meta(), &DataType::Digit);
 
-        let ip: DataField = <DataField as RecordItemFactory>::from_ip(
+        let ip: FieldStorage = <FieldStorage as RecordItemFactory>::from_ip(
             "addr",
             IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)),
         );
         assert_eq!(ip.get_meta(), &DataType::IP);
 
-        let chars: DataField = <DataField as RecordItemFactory>::from_chars("s", "hello");
+        let chars: FieldStorage = <FieldStorage as RecordItemFactory>::from_chars("s", "hello");
         assert_eq!(chars.get_meta(), &DataType::Chars);
     }
 
@@ -388,5 +523,72 @@ mod tests {
         assert!(display.contains("name"));
         assert!(display.contains("age"));
         assert!(display.contains("ip"));
+    }
+
+    // ========== Record<FieldStorage> convenience methods tests ==========
+
+    #[test]
+    fn test_push_shared() {
+        let mut record = DataRecord::default();
+        let field = Arc::new(Field::new(DataType::Chars, "static", Value::from("value")));
+
+        record.push_shared(field.clone());
+        assert_eq!(record.items.len(), 1);
+        assert!(record.items[0].is_shared());
+        assert_eq!(record.items[0].as_field().get_name(), "static");
+    }
+
+    #[test]
+    fn test_push_owned() {
+        let mut record = DataRecord::default();
+        let field = Field::new(DataType::Digit, "dynamic", Value::from(42));
+
+        record.push_owned(field);
+        assert_eq!(record.items.len(), 1);
+        assert!(!record.items[0].is_shared());
+        assert_eq!(record.items[0].as_field().get_name(), "dynamic");
+    }
+
+    #[test]
+    fn test_get_field() {
+        let mut record = DataRecord::default();
+        record.push_owned(Field::new(DataType::Chars, "test", Value::from("value")));
+
+        let field = record.get_field(0);
+        assert!(field.is_some());
+        assert_eq!(field.unwrap().get_name(), "test");
+
+        let missing = record.get_field(10);
+        assert!(missing.is_none());
+    }
+
+    #[test]
+    fn test_storage_stats() {
+        let mut record = DataRecord::default();
+
+        // Add shared fields
+        record.push_shared(Arc::new(Field::new(DataType::Chars, "s1", Value::from("a"))));
+        record.push_shared(Arc::new(Field::new(DataType::Chars, "s2", Value::from("b"))));
+
+        // Add owned fields
+        record.push_owned(Field::new(DataType::Digit, "o1", Value::from(1)));
+        record.push_owned(Field::new(DataType::Digit, "o2", Value::from(2)));
+        record.push_owned(Field::new(DataType::Digit, "o3", Value::from(3)));
+
+        let (shared, owned) = record.storage_stats();
+        assert_eq!(shared, 2);
+        assert_eq!(owned, 3);
+    }
+
+    #[test]
+    fn test_into_owned_record() {
+        let mut record = DataRecord::default();
+        record.push_shared(Arc::new(Field::new(DataType::Chars, "s", Value::from("shared"))));
+        record.push_owned(Field::new(DataType::Digit, "o", Value::from(10)));
+
+        let owned_record = record.into_owned_record();
+        assert_eq!(owned_record.items.len(), 2);
+        assert_eq!(owned_record.items[0].get_name(), "s");
+        assert_eq!(owned_record.items[1].get_name(), "o");
     }
 }
