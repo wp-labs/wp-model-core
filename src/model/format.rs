@@ -1,5 +1,5 @@
-use std::fmt::Formatter;
 use crate::model::data::record::RecordItem;
+use std::fmt::Formatter;
 
 pub struct MetaFmt<T>(pub T);
 

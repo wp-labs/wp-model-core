@@ -15,10 +15,10 @@ pub mod data;
 pub mod types;
 // conditions impls moved out; core remains pure types + format
 
+pub use data::storage::FieldStorage;
 pub use types::meta::{DataType, MetaErr};
 pub use types::value::{DateTimeValue, DomainT, EmailT, IdCardT, Maker, MobilePhoneT, UrlValue};
 pub use types::value::{DigitValue, FloatValue, HexT, IgnoreT, IpNetValue};
-pub use data::storage::FieldStorage;
 
 /// 字段名称类型
 /// 当前实现：SmolStr（小字符串优化，≤22字节内联存储）

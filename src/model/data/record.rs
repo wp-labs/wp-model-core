@@ -283,7 +283,8 @@ impl Record<FieldStorage> {
     pub fn into_owned_record(self) -> Record<Field<Value>> {
         Record {
             id: self.id,
-            items: self.items
+            items: self
+                .items
                 .into_iter()
                 .map(|storage| storage.into_owned())
                 .collect(),
@@ -318,7 +319,10 @@ mod tests {
 
     #[test]
     fn test_record_from_vec() {
-        let fields: Vec<FieldStorage> = vec![FieldStorage::from_digit("x", 1), FieldStorage::from_digit("y", 2)];
+        let fields: Vec<FieldStorage> = vec![
+            FieldStorage::from_digit("x", 1),
+            FieldStorage::from_digit("y", 2),
+        ];
         let record: DataRecord = Record::from(fields);
         assert_eq!(record.items.len(), 2);
     }
@@ -398,8 +402,10 @@ mod tests {
     #[test]
     fn test_record_merge() {
         let mut record1: DataRecord = Record::from(vec![FieldStorage::from_digit("a", 1)]);
-        let record2: DataRecord =
-            Record::from(vec![FieldStorage::from_digit("b", 2), FieldStorage::from_digit("c", 3)]);
+        let record2: DataRecord = Record::from(vec![
+            FieldStorage::from_digit("b", 2),
+            FieldStorage::from_digit("c", 3),
+        ]);
 
         record1.merge(record2);
         assert_eq!(record1.items.len(), 3);
@@ -567,8 +573,16 @@ mod tests {
         let mut record = DataRecord::default();
 
         // Add shared fields
-        record.push_shared(Arc::new(Field::new(DataType::Chars, "s1", Value::from("a"))));
-        record.push_shared(Arc::new(Field::new(DataType::Chars, "s2", Value::from("b"))));
+        record.push_shared(Arc::new(Field::new(
+            DataType::Chars,
+            "s1",
+            Value::from("a"),
+        )));
+        record.push_shared(Arc::new(Field::new(
+            DataType::Chars,
+            "s2",
+            Value::from("b"),
+        )));
 
         // Add owned fields
         record.push_owned(Field::new(DataType::Digit, "o1", Value::from(1)));
@@ -583,7 +597,11 @@ mod tests {
     #[test]
     fn test_into_owned_record() {
         let mut record = DataRecord::default();
-        record.push_shared(Arc::new(Field::new(DataType::Chars, "s", Value::from("shared"))));
+        record.push_shared(Arc::new(Field::new(
+            DataType::Chars,
+            "s",
+            Value::from("shared"),
+        )));
         record.push_owned(Field::new(DataType::Digit, "o", Value::from(10)));
 
         let owned_record = record.into_owned_record();

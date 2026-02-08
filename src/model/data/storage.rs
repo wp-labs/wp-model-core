@@ -1,7 +1,7 @@
-use crate::model::Value;
 use crate::model::DataType;
-use crate::model::{FNameStr, FValueStr};
+use crate::model::Value;
 use crate::model::format::LevelFormatAble;
+use crate::model::{FNameStr, FValueStr};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{Display, Formatter};
 use std::net::IpAddr;
@@ -238,8 +238,11 @@ impl RecordItem for FieldStorage {
             FieldStorage::Shared(arc) => {
                 // If there are multiple references, we need to clone to get a mutable version
                 // This converts Shared to Owned variant
-                let field = Arc::try_unwrap(std::mem::replace(arc, Arc::new(Field::new(DataType::Ignore, "", Value::from(false)))))
-                    .unwrap_or_else(|arc| (*arc).clone());
+                let field = Arc::try_unwrap(std::mem::replace(
+                    arc,
+                    Arc::new(Field::new(DataType::Ignore, "", Value::from(false))),
+                ))
+                .unwrap_or_else(|arc| (*arc).clone());
                 *self = FieldStorage::Owned(field);
                 match self {
                     FieldStorage::Owned(f) => f.get_value_mut(),
