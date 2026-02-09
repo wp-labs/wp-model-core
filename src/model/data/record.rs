@@ -203,7 +203,7 @@ where
 // Convenience construction for Record<FieldStorage> from Vec<DataField>
 impl From<Vec<Field<Value>>> for Record<FieldStorage> {
     fn from(fields: Vec<Field<Value>>) -> Self {
-        let items: Vec<FieldStorage> = fields.into_iter().map(FieldStorage::Owned).collect();
+        let items: Vec<FieldStorage> = fields.into_iter().map(FieldStorage::from_owned).collect();
         Self { id: 0, items }
     }
 }
@@ -213,7 +213,7 @@ impl From<Field<Value>> for Record<FieldStorage> {
     fn from(field: Field<Value>) -> Self {
         Self {
             id: 0,
-            items: vec![FieldStorage::Owned(field)],
+            items: vec![FieldStorage::from_owned(field)],
         }
     }
 }
@@ -233,7 +233,7 @@ impl Record<FieldStorage> {
     /// record.push_shared(field);
     /// ```
     pub fn push_shared(&mut self, field: Arc<Field<Value>>) {
-        self.items.push(FieldStorage::Shared(field));
+        self.items.push(FieldStorage::from_shared(field));
     }
 
     /// Push an owned field to the record
@@ -248,7 +248,7 @@ impl Record<FieldStorage> {
     /// record.push_owned(field);
     /// ```
     pub fn push_owned(&mut self, field: Field<Value>) {
-        self.items.push(FieldStorage::Owned(field));
+        self.items.push(FieldStorage::from_owned(field));
     }
 
     /// Get a reference to the underlying field by index
@@ -348,9 +348,10 @@ impl Record<FieldStorage> {
         let mut shared_count = 0;
         let mut owned_count = 0;
         for item in &self.items {
-            match item {
-                FieldStorage::Shared(_) => shared_count += 1,
-                FieldStorage::Owned(_) => owned_count += 1,
+            if item.is_shared() {
+                shared_count += 1;
+            } else {
+                owned_count += 1;
             }
         }
         (shared_count, owned_count)

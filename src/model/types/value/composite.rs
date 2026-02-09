@@ -69,7 +69,7 @@ impl From<BTreeMap<SmolStr, DataField>> for ObjectValue {
     fn from(map: BTreeMap<SmolStr, DataField>) -> Self {
         ObjectValue(
             map.into_iter()
-                .map(|(k, v)| (k, FieldStorage::Owned(v)))
+                .map(|(k, v)| (k, FieldStorage::from_owned(v)))
                 .collect(),
         )
     }

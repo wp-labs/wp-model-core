@@ -51,7 +51,7 @@ pub enum Value {
 // 自动转换支持（降低迁移成本）
 impl FromIterator<Field<Value>> for Vec<FieldStorage> {
     fn from_iter<I: IntoIterator<Item = Field<Value>>>(iter: I) -> Self {
-        iter.into_iter().map(FieldStorage::Owned).collect()
+        iter.into_iter().map(FieldStorage::from_owned).collect()
     }
 }
 

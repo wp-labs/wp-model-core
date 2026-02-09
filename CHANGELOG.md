@@ -5,158 +5,86 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.2]
+## [0.8.3]
 
 ### ⚠️ BREAKING CHANGES
 
-- **`Record<FieldStorage>::get_field(usize)` renamed to `field_at(usize)`**
-  - Frees the `get_field` name for the more common name-based lookup
-  - Replace `record.get_field(0)` with `record.field_at(0)`
+- **`DataRecord` 类型变更**: `Record<Field<Value>>` → `Record<FieldStorage>`，支持 Arc 共享与独占混合存储
+- **`Value::Array` 类型变更**: `Vec<Field<Value>>` → `Vec<FieldStorage>`，用 `.into_iter().collect()` 迁移
+- **`ObjectValue` 内部存储变更**: `BTreeMap<SmolStr, Field<Value>>` → `BTreeMap<SmolStr, FieldStorage>`，通过 `From` trait 自动转换
+- **`FieldStorage` 重构**: enum → struct + `ValueStorage` enum，不再能用 `FieldStorage::Owned(field)` / `FieldStorage::Shared(arc)` 构造，改用 `from_owned()` / `from_shared()`
+- **`FieldStorage::from_shared()` 签名变更**: `from_shared(Field<Value>)` → `from_shared(Arc<Field<Value>>)`，调用方控制 Arc 创建
+- **`get_field(usize)` 重命名为 `field_at(usize)`**，`get_field` 改为按名称查找
+- **License**: Elastic-2.0 → Apache-2.0
 
 ### Added
 
-- **FieldStorage conversion support**:
-  - `impl From<Arc<Field<Value>>> for FieldStorage` - Auto-wrap Arc as `Shared` variant
-  - `is_owned()` method - Check if a `FieldStorage` is the `Owned` variant
-  - `as_field_mut()` method - Get mutable reference to underlying field (clone-on-write for `Shared`)
+#### FieldStorage 混合存储
 
-- **DataRecord construction from DataField**:
-  - `impl From<Vec<DataField>> for DataRecord` - Create record directly from `Vec<DataField>`
-  - `impl From<DataField> for DataRecord` - Create single-field record from `DataField`
+- `FieldStorage` struct — 支持零拷贝共享与独占所有权的字段存储
+  - `ValueStorage::Shared(Arc<Field<Value>>)` — Arc 共享，clone 仅增引用计数（~5ns）
+  - `ValueStorage::Owned(Field<Value>)` — 独占所有权
+- 核心方法: `from_shared()`, `from_owned()`, `as_field()`, `as_field_mut()`（clone-on-write）, `into_owned()`, `is_shared()`, `is_owned()`, `shared_count()`
+- Trait 实现: `RecordItem`, `RecordItemFactory`, `LevelFormatAble`, `Display`, `PartialEq`, `Eq`, `Serialize`, `Deserialize`
 
-- **Generic `append`/`push` on `Record<T>`**:
-  - `append()` now accepts `impl Into<T>` - e.g. `record.append(DataField::from_chars("a", "1"))` without explicit `FieldStorage::Owned` wrapping
-  - `push()` added as alias for `append()` following `Vec` naming convention
+#### 零拷贝 set_name
 
-- **DataRecord field access convenience methods**:
-  - `get_field(name: &str) -> Option<&DataField>` - Direct field lookup by name
-  - `get_field_mut(name: &str) -> Option<&mut DataField>` - Mutable field lookup by name (clone-on-write for shared fields)
-  - `field_mut(key: &str) -> Option<&mut T>` on generic `Record<T>` - Mutable `FieldStorage` lookup by name
+- `set_name(impl Into<FNameStr>)` — 仅修改 `cur_name` 覆盖层，不 clone 底层 `DataField`
+- `get_name()` — 优先级: `cur_name` > `field.name`
+- `get_value()` / `get_meta()` — 便捷访问器
+- `cur_name` 类型为 `FNameStr`（SmolStr），≤22 字节内联存储，零堆分配
 
-- **DataRecord field iterators**:
-  - `fields() -> impl Iterator<Item = &DataField>` - Iterate over all fields as `DataField` references
-  - `fields_mut() -> impl Iterator<Item = &mut DataField>` - Mutable iterator (clone-on-write for shared fields)
+#### Record API
 
-- **`Record<T>` utility methods**:
-  - `len()` - Get the number of fields in the record
-  - `is_empty()` - Check if the record has no fields
+- `push_shared()`, `push_owned()` — 按存储类型添加字段
+- `field_at(usize)` — 按索引访问
+- `get_field(name)`, `get_field_mut(name)` — 按名称查找
+- `fields()`, `fields_mut()` — 字段迭代器（Shared 变体 clone-on-write）
+- `storage_stats()` — 统计 Shared/Owned 数量
+- `into_owned_record()` — 转换为 `Record<Field<Value>>`
+- `append(impl Into<T>)`, `push()` — 泛型追加
+- `len()`, `is_empty()` — 实用方法
 
-- **ObjectValue::insert generified**:
-  - `insert()` value parameter changed to `impl Into<FieldStorage>` - e.g. `obj.insert("key", DataField::from_chars("k", "v"))` without explicit wrapping
+#### 类型转换
 
-## [0.8.1] - 2026-02-09
-
-### ⚠️ BREAKING CHANGES
-
-- **DataRecord type changed from `Record<Field<Value>>` to `Record<FieldStorage>`**
-  - Enables mixed storage mode with both shared (Arc) and owned fields
-  - Static/constant fields can now be shared with zero-copy semantics
-
-- **Value::Array changed from `Vec<Field<Value>>` to `Vec<FieldStorage>`**
-  - Enables zero-copy sharing for array elements
-  - Use `.into_iter().collect()` to convert from `Vec<Field<Value>>`
-
-- **ObjectValue internal storage changed from `BTreeMap<SmolStr, Field<Value>>` to `BTreeMap<SmolStr, FieldStorage>`**
-  - Enables zero-copy sharing for object fields
-  - Automatic conversion from old format via `From` trait
-
-- **License changed from Elastic-2.0 to Apache-2.0**
-  - More permissive open source license
-  - Allows broader commercial and community use
-
-### Added
-
-- **FieldStorage enum** for mixed storage support
-  - `Shared(Arc<Field<Value>>)` variant for zero-copy sharing of static fields
-  - `Owned(Field<Value>)` variant for dynamically computed fields
-  - Methods: `as_field()`, `into_owned()`, `from_shared()`, `from_owned()`, `is_shared()`, `shared_count()`
-  - Implements: `RecordItem`, `RecordItemFactory`, `LevelFormatAble`, `Display`, `PartialEq`, `Eq`, `Serialize`, `Deserialize`
-
-- **Record<FieldStorage> convenience methods**:
-  - `push_shared(field: Arc<Field<Value>>)` - Add Arc-wrapped field
-  - `push_owned(field: Field<Value>)` - Add owned field
-  - `get_field(index: usize) -> Option<&Field<Value>>` - Get field by index
-  - `storage_stats() -> (usize, usize)` - Get count of shared vs owned fields
-  - `into_owned_record() -> Record<Field<Value>>` - Convert to fully owned record
-
-- **Automatic conversions** to ease migration:
-  - `impl From<Field<Value>> for FieldStorage` - Auto-wrap fields
-  - `impl FromIterator<Field<Value>> for Vec<FieldStorage>` - Support `.collect()`
-  - `impl From<BTreeMap<SmolStr, Field<Value>>> for ObjectValue` - Auto-convert maps
-
-- **Field type is now publicly exported** from `wp_model_core::model`
+- `From<Field<Value>>`, `From<Arc<Field<Value>>>` → `FieldStorage`
+- `From<Vec<DataField>>`, `From<DataField>` → `DataRecord`
+- `FromIterator<Field<Value>>` → `Vec<FieldStorage>`
+- `From<BTreeMap<SmolStr, DataField>>` → `ObjectValue`
+- `ObjectValue::insert()` 接受 `impl Into<FieldStorage>`
+- `Field` 类型从 `wp_model_core::model` 公开导出
 
 ### Performance Improvements
 
-- Static field cloning: 50-500ns → ~5ns (Arc reference count increment)
-- Reduced memory usage: 50-90% for high static field ratio scenarios
-- Multi-stage pipeline processing: 50-97% performance improvement
-- Array/Object cloning: Now supports zero-copy via Arc-wrapped fields
+- Shared 字段 clone: 50-500ns → ~5ns（Arc 引用计数递增）
+- 零拷贝重命名: `set_name()` 不触发 `Arc<DataField>` clone
+- 多阶段管道: 2-3x 性能提升，多阶段共享同一 Arc 各自独立命名
+- 内存占用: ~70% 节省，避免重复 clone 大字段值
 
 ### Migration Guide
 
-#### DataRecord (Basic usage - no changes required)
-
-Existing code continues to work:
-
 ```rust
-use wp_model_core::model::DataRecord;
-
-// Old code still works
-let mut record = DataRecord::default();
-```
-
-#### Using mixed storage features
-
-```rust
-use std::sync::Arc;
-use wp_model_core::model::{DataRecord, Field, Value, DataType, FieldStorage};
-
+// 基本用法无需修改
 let mut record = DataRecord::default();
 
-// Add shared field (for static/constant values)
-let static_field = Arc::new(Field::new(DataType::Chars, "app", Value::from("myapp")));
-record.push_shared(static_field);
+// 混合存储 + 零拷贝重命名
+let field = Arc::new(Field::new(DataType::Chars, "HOST", Value::from("192.168.1.1")));
+record.push_shared(Arc::clone(&field));
 
-// Add owned field (for dynamic values)
+let mut storage = FieldStorage::from_shared(Arc::clone(&field));
+storage.set_name("server_ip");  // 零拷贝！
+
+// 动态字段
 record.push_owned(Field::new(DataType::Digit, "count", Value::from(42)));
-
-// Or use FieldStorage directly
 record.append(FieldStorage::from_digit("age", 30));
-```
 
-#### Value::Array
-
-Use `.into_iter().collect()` for automatic conversion:
-
-```rust
-// Before
-let arr = Value::Array(vec![field1, field2]);
-
-// After
+// Value::Array 迁移
 let arr = Value::Array(vec![field1, field2].into_iter().collect());
-```
 
-#### ObjectValue
+// ObjectValue
+obj.insert("key".into(), field.into());
 
-Automatic conversion via `From` trait:
-
-```rust
-// Before
-let mut obj = ObjectValue::new();
-obj.insert("key".into(), field);
-
-// After (same API, different internal storage)
-let mut obj = ObjectValue::new();
-obj.insert("key".into(), field.into());  // or FieldStorage::Owned(field)
-```
-
-#### Converting to fully owned record
-
-For code that expects `Record<Field<Value>>`:
-
-```rust
-// Convert DataRecord to fully owned record
+// 转换为全量 owned
 let owned_record = record.into_owned_record();
 ```
 
@@ -187,8 +115,8 @@ let owned_record = record.into_owned_record();
 - HTTP type support (request, status, agent, method)
 - Array type with subtype specification
 
-[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.8.1...HEAD
-[0.8.1]: https://github.com/wp-labs/wp-model-core/compare/v0.7.2...v0.8.1
+[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.8.3...HEAD
+[0.8.3]: https://github.com/wp-labs/wp-model-core/compare/v0.7.2...v0.8.3
 [0.7.2]: https://github.com/wp-labs/wp-model-core/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/wp-labs/wp-model-core/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/wp-labs/wp-model-core/releases/tag/v0.7.0
