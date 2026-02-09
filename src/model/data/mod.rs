@@ -1,9 +1,11 @@
 pub mod field;
+pub mod field_ref;
 pub mod maker;
 pub mod map;
 pub mod record;
 pub mod storage;
 pub use field::Field;
+pub use field_ref::FieldRef;
 pub use map::ObjectMap;
 pub use record::Record;
 pub use storage::FieldStorage;

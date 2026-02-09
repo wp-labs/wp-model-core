@@ -1,6 +1,6 @@
-use crate::model::Maker;
 use crate::model::format::LevelFormatAble;
 use crate::model::{DataType, FNameStr, FValueStr, Value};
+use crate::model::{FieldRef, Maker};
 use crate::traits::AsValueRef;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -270,9 +270,10 @@ impl Record<FieldStorage> {
         self.items.get(index).map(|s| s.as_field())
     }
 
-    /// Get a direct reference to the underlying [`DataField`] by name.
+    /// Get a [`FieldRef`] by name (zero-copy, cur_name-aware).
     ///
-    /// This is a convenience shortcut for `self.field(name).map(|s| s.as_field())`.
+    /// Returns a [`FieldRef`] that respects the `cur_name` override.
+    /// For owned field access, use [`get_field_owned()`](Self::get_field_owned).
     ///
     /// # Examples
     ///
@@ -285,8 +286,15 @@ impl Record<FieldStorage> {
     /// assert_eq!(record.get_field("name").map(|f| f.get_name()), Some("name"));
     /// assert!(record.get_field("missing").is_none());
     /// ```
-    pub fn get_field(&self, name: &str) -> Option<&Field<Value>> {
-        self.field(name).map(|s| s.as_field())
+    pub fn get_field(&self, name: &str) -> Option<FieldRef<'_>> {
+        self.field(name).map(|s| s.field_ref())
+    }
+
+    /// Get owned field by name with cur_name applied.
+    ///
+    /// Use when you need to modify the field or transfer ownership.
+    pub fn get_field_owned(&self, name: &str) -> Option<Field<Value>> {
+        self.get_field(name).map(|f| f.to_owned())
     }
 
     /// Get a mutable reference to the underlying [`DataField`] by name.
@@ -311,9 +319,15 @@ impl Record<FieldStorage> {
 
     /// Iterate over all fields as [`DataField`] references.
     ///
-    /// Equivalent to `self.items.iter().map(|s| s.as_field())`.
+    /// Note: Returns underlying field references. Field names may not reflect
+    /// `cur_name` overrides. Use [`field_refs()`](Self::field_refs) for cur_name-aware iteration.
     pub fn fields(&self) -> impl Iterator<Item = &Field<Value>> + '_ {
         self.items.iter().map(|s| s.as_field())
+    }
+
+    /// Iterate over all fields as [`FieldRef`] (zero-copy, cur_name-aware).
+    pub fn field_refs(&self) -> impl Iterator<Item = FieldRef<'_>> + '_ {
+        self.items.iter().map(|s| s.field_ref())
     }
 
     /// Iterate over all fields as mutable [`DataField`] references.

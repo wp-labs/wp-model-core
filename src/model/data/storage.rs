@@ -1,4 +1,5 @@
 use crate::model::DataType;
+use crate::model::FieldRef;
 use crate::model::Value;
 use crate::model::format::LevelFormatAble;
 use crate::model::{FNameStr, FValueStr};
@@ -55,7 +56,7 @@ pub enum ValueStorage {
 pub struct FieldStorage {
     /// Current field name (overrides field.name).
     /// None means use the underlying field's original name.
-    cur_name: Option<FNameStr>,
+    pub(crate) cur_name: Option<FNameStr>,
 
     /// Field value storage
     value: ValueStorage,
@@ -254,6 +255,28 @@ impl FieldStorage {
     #[inline]
     pub fn get_meta(&self) -> &DataType {
         self.as_field().get_meta()
+    }
+
+    /// Get field reference with cur_name overlay applied (zero-copy).
+    ///
+    /// Returns a [`FieldRef`] that provides consistent `cur_name`-aware access.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use wp_model_core::model::{FieldStorage, Field, Value, DataType};
+    ///
+    /// let mut storage = FieldStorage::from_owned(
+    ///     Field::new(DataType::Chars, "old", Value::from("test"))
+    /// );
+    /// storage.set_name("new");
+    ///
+    /// let field_ref = storage.field_ref();
+    /// assert_eq!(field_ref.get_name(), "new");
+    /// ```
+    #[inline]
+    pub fn field_ref(&self) -> FieldRef<'_> {
+        FieldRef { storage: self }
     }
 }
 

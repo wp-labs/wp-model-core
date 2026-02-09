@@ -15,6 +15,7 @@ pub mod data;
 pub mod types;
 // conditions impls moved out; core remains pure types + format
 
+pub use data::field_ref::FieldRef;
 pub use data::storage::FieldStorage;
 pub use types::meta::{DataType, MetaErr};
 pub use types::value::{DateTimeValue, DomainT, EmailT, IdCardT, Maker, MobilePhoneT, UrlValue};
