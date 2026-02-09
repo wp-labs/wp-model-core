@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.3]
+## [0.8.4]
 
 ### ⚠️ BREAKING CHANGES
 
@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`FieldStorage` 重构**: enum → struct + `ValueStorage` enum，不再能用 `FieldStorage::Owned(field)` / `FieldStorage::Shared(arc)` 构造，改用 `from_owned()` / `from_shared()`
 - **`FieldStorage::from_shared()` 签名变更**: `from_shared(Field<Value>)` → `from_shared(Arc<Field<Value>>)`，调用方控制 Arc 创建
 - **`get_field(usize)` 重命名为 `field_at(usize)`**，`get_field` 改为按名称查找
+- **`DataRecord::get_field()` 返回类型变更**: `Option<&Field<Value>>` → `Option<FieldRef<'_>>`，提供 cur_name 感知的零拷贝访问
 - **License**: Elastic-2.0 → Apache-2.0
 
 ### Added
@@ -33,6 +34,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `get_name()` — 优先级: `cur_name` > `field.name`
 - `get_value()` / `get_meta()` — 便捷访问器
 - `cur_name` 类型为 `FNameStr`（SmolStr），≤22 字节内联存储，零堆分配
+
+#### FieldRef 零拷贝字段引用
+
+- `FieldRef<'a>` — 8 字节零分配包装，提供 cur_name 感知的一致视图
+  - `get_name()` / `get_meta()` / `get_value()` — 零拷贝访问，返回 `'a` 生命周期引用
+  - `to_owned()` — 延迟克隆并应用 cur_name
+  - `has_name_override()` / `is_shared()` / `shared_count()`
+  - Trait: `Debug`, `Display`, `PartialEq<Field<Value>>`, `PartialEq<FieldRef>`, `Copy`, `Clone`
+- `FieldStorage::field_ref()` — 获取 `FieldRef`
+- `DataRecord::get_field()` — 返回 `Option<FieldRef<'_>>`（cur_name 感知）
+- `DataRecord::get_field_owned()` — 获取应用了 cur_name 的拥有字段
+- `DataRecord::field_refs()` — cur_name 感知的字段迭代器
 
 #### Record API
 
