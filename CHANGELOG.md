@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ BREAKING CHANGES
+
+- **`Record<FieldStorage>::get_field(usize)` renamed to `field_at(usize)`**
+  - Frees the `get_field` name for the more common name-based lookup
+  - Replace `record.get_field(0)` with `record.field_at(0)`
+
+### Added
+
+- **FieldStorage conversion support**:
+  - `impl From<Arc<Field<Value>>> for FieldStorage` - Auto-wrap Arc as `Shared` variant
+  - `is_owned()` method - Check if a `FieldStorage` is the `Owned` variant
+  - `as_field_mut()` method - Get mutable reference to underlying field (clone-on-write for `Shared`)
+
+- **DataRecord construction from DataField**:
+  - `impl From<Vec<DataField>> for DataRecord` - Create record directly from `Vec<DataField>`
+  - `impl From<DataField> for DataRecord` - Create single-field record from `DataField`
+
+- **Generic `append`/`push` on `Record<T>`**:
+  - `append()` now accepts `impl Into<T>` - e.g. `record.append(DataField::from_chars("a", "1"))` without explicit `FieldStorage::Owned` wrapping
+  - `push()` added as alias for `append()` following `Vec` naming convention
+
+- **DataRecord field access convenience methods**:
+  - `get_field(name: &str) -> Option<&DataField>` - Direct field lookup by name
+  - `get_field_mut(name: &str) -> Option<&mut DataField>` - Mutable field lookup by name (clone-on-write for shared fields)
+  - `field_mut(key: &str) -> Option<&mut T>` on generic `Record<T>` - Mutable `FieldStorage` lookup by name
+
+- **DataRecord field iterators**:
+  - `fields() -> impl Iterator<Item = &DataField>` - Iterate over all fields as `DataField` references
+  - `fields_mut() -> impl Iterator<Item = &mut DataField>` - Mutable iterator (clone-on-write for shared fields)
+
+- **`Record<T>` utility methods**:
+  - `len()` - Get the number of fields in the record
+  - `is_empty()` - Check if the record has no fields
+
+- **ObjectValue::insert generified**:
+  - `insert()` value parameter changed to `impl Into<FieldStorage>` - e.g. `obj.insert("key", DataField::from_chars("k", "v"))` without explicit wrapping
+
 ## [0.8.1] - 2026-02-09
 
 ### ⚠️ BREAKING CHANGES
