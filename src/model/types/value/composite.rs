@@ -32,8 +32,8 @@ impl ObjectValue {
         ObjectValue(BTreeMap::new())
     }
 
-    pub fn insert<S: Into<SmolStr>>(&mut self, key: S, value: FieldStorage) {
-        self.0.insert(key.into(), value);
+    pub fn insert<S: Into<SmolStr>>(&mut self, key: S, value: impl Into<FieldStorage>) {
+        self.0.insert(key.into(), value.into());
     }
 
     pub fn get(&self, key: &str) -> Option<&FieldStorage> {

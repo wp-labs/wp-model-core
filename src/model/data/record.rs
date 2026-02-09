@@ -106,9 +106,27 @@ where
 }
 
 impl<T> Record<T> {
-    pub fn append(&mut self, data: T) {
-        self.items.push(data);
+    pub fn len(&self) -> usize {
+        self.items.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    /// Append a field to the record.
+    ///
+    /// Accepts any type that can be converted into `T`. For `DataRecord`,
+    /// this means you can pass [`DataField`], [`FieldStorage`], or `Arc<DataField>` directly.
+    pub fn append(&mut self, data: impl Into<T>) {
+        self.items.push(data.into());
+    }
+
+    /// Alias for [`append`](Self::append) following Vec naming convention.
+    pub fn push(&mut self, data: impl Into<T>) {
+        self.items.push(data.into());
+    }
+
     pub fn merge(&mut self, mut other: Self) {
         self.items.append(&mut other.items);
     }
@@ -121,6 +139,10 @@ where
     // 存在同名字段时取第一个字段返回值
     pub fn field(&self, key: &str) -> Option<&T> {
         self.items.iter().find(|item| item.get_name() == key)
+    }
+
+    pub fn field_mut(&mut self, key: &str) -> Option<&mut T> {
+        self.items.iter_mut().find(|item| item.get_name() == key)
     }
 
     pub fn get2(&self, name: &str) -> Option<&T> {
@@ -178,6 +200,24 @@ where
     }
 }
 
+// Convenience construction for Record<FieldStorage> from Vec<DataField>
+impl From<Vec<Field<Value>>> for Record<FieldStorage> {
+    fn from(fields: Vec<Field<Value>>) -> Self {
+        let items: Vec<FieldStorage> = fields.into_iter().map(FieldStorage::Owned).collect();
+        Self { id: 0, items }
+    }
+}
+
+// Convenience construction for Record<FieldStorage> from a single DataField
+impl From<Field<Value>> for Record<FieldStorage> {
+    fn from(field: Field<Value>) -> Self {
+        Self {
+            id: 0,
+            items: vec![FieldStorage::Owned(field)],
+        }
+    }
+}
+
 // Convenience methods for Record<FieldStorage> (DataRecord with mixed storage)
 impl Record<FieldStorage> {
     /// Push a shared field (Arc-wrapped) to the record
@@ -222,12 +262,65 @@ impl Record<FieldStorage> {
     /// let field = Field::new(DataType::Digit, "x", Value::from(10));
     /// record.push_owned(field);
     ///
-    /// let retrieved = record.get_field(0);
+    /// let retrieved = record.field_at(0);
     /// assert!(retrieved.is_some());
     /// assert_eq!(retrieved.unwrap().get_name(), "x");
     /// ```
-    pub fn get_field(&self, index: usize) -> Option<&Field<Value>> {
+    pub fn field_at(&self, index: usize) -> Option<&Field<Value>> {
         self.items.get(index).map(|s| s.as_field())
+    }
+
+    /// Get a direct reference to the underlying [`DataField`] by name.
+    ///
+    /// This is a convenience shortcut for `self.field(name).map(|s| s.as_field())`.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use wp_model_core::model::{DataRecord, DataField};
+    ///
+    /// let record = DataRecord::from(vec![
+    ///     DataField::from_chars("name", "Alice"),
+    /// ]);
+    /// assert_eq!(record.get_field("name").map(|f| f.get_name()), Some("name"));
+    /// assert!(record.get_field("missing").is_none());
+    /// ```
+    pub fn get_field(&self, name: &str) -> Option<&Field<Value>> {
+        self.field(name).map(|s| s.as_field())
+    }
+
+    /// Get a mutable reference to the underlying [`DataField`] by name.
+    ///
+    /// For `Shared` fields, this converts to `Owned` first (clone-on-write).
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use wp_model_core::model::{DataRecord, DataField};
+    ///
+    /// let mut record = DataRecord::from(vec![
+    ///     DataField::from_chars("name", "Alice"),
+    /// ]);
+    /// if let Some(field) = record.get_field_mut("name") {
+    ///     field.set_name("renamed");
+    /// }
+    /// ```
+    pub fn get_field_mut(&mut self, name: &str) -> Option<&mut Field<Value>> {
+        self.field_mut(name).map(|s| s.as_field_mut())
+    }
+
+    /// Iterate over all fields as [`DataField`] references.
+    ///
+    /// Equivalent to `self.items.iter().map(|s| s.as_field())`.
+    pub fn fields(&self) -> impl Iterator<Item = &Field<Value>> + '_ {
+        self.items.iter().map(|s| s.as_field())
+    }
+
+    /// Iterate over all fields as mutable [`DataField`] references.
+    ///
+    /// For `Shared` fields, this converts them to `Owned` (clone-on-write).
+    pub fn fields_mut(&mut self) -> impl Iterator<Item = &mut Field<Value>> + '_ {
+        self.items.iter_mut().map(|s| s.as_field_mut())
     }
 
     /// Get statistics about storage types (shared vs owned)
@@ -560,11 +653,11 @@ mod tests {
         let mut record = DataRecord::default();
         record.push_owned(Field::new(DataType::Chars, "test", Value::from("value")));
 
-        let field = record.get_field(0);
+        let field = record.field_at(0);
         assert!(field.is_some());
         assert_eq!(field.unwrap().get_name(), "test");
 
-        let missing = record.get_field(10);
+        let missing = record.field_at(10);
         assert!(missing.is_none());
     }
 
@@ -608,5 +701,126 @@ mod tests {
         assert_eq!(owned_record.items.len(), 2);
         assert_eq!(owned_record.items[0].get_name(), "s");
         assert_eq!(owned_record.items[1].get_name(), "o");
+    }
+
+    // ========== New convenience API tests ==========
+
+    #[test]
+    fn test_record_len_and_is_empty() {
+        let mut record = DataRecord::default();
+        assert!(record.is_empty());
+        assert_eq!(record.len(), 0);
+
+        record.append(FieldStorage::from_chars("a", "1"));
+        assert!(!record.is_empty());
+        assert_eq!(record.len(), 1);
+    }
+
+    #[test]
+    fn test_from_vec_datafield() {
+        let fields: Vec<DataField> = vec![
+            DataField::from_chars("a", "1"),
+            DataField::from_chars("b", "2"),
+        ];
+        let record = DataRecord::from(fields);
+        assert_eq!(record.len(), 2);
+        assert!(record.field("a").is_some());
+        assert!(record.field("b").is_some());
+    }
+
+    #[test]
+    fn test_from_single_datafield() {
+        let field = DataField::from_chars("name", "Alice");
+        let record = DataRecord::from(field);
+        assert_eq!(record.len(), 1);
+        assert!(record.field("name").is_some());
+    }
+
+    #[test]
+    fn test_append_generic() {
+        let mut record = DataRecord::default();
+
+        // Append a DataField directly (auto-converts via Into<FieldStorage>)
+        record.append(DataField::from_chars("a", "1"));
+
+        // Append a FieldStorage directly (still works)
+        record.append(FieldStorage::from_chars("b", "2"));
+
+        // Append via Arc (auto-converts to Shared)
+        let arc_field = Arc::new(DataField::from_chars("c", "3"));
+        record.append(arc_field);
+
+        assert_eq!(record.len(), 3);
+        assert!(record.items[0].is_owned());
+        assert!(record.items[1].is_owned());
+        assert!(record.items[2].is_shared());
+    }
+
+    #[test]
+    fn test_push_alias() {
+        let mut record = DataRecord::default();
+        record.push(DataField::from_chars("a", "1"));
+        record.push(FieldStorage::from_chars("b", "2"));
+        assert_eq!(record.len(), 2);
+    }
+
+    #[test]
+    fn test_get_field_by_name() {
+        let record = DataRecord::from(vec![
+            DataField::from_chars("name", "Alice"),
+            DataField::from_digit("age", 30),
+        ]);
+
+        let field = record.get_field("name");
+        assert!(field.is_some());
+        assert_eq!(field.unwrap().get_name(), "name");
+
+        assert!(record.get_field("missing").is_none());
+    }
+
+    #[test]
+    fn test_get_field_mut_by_name() {
+        let mut record = DataRecord::from(vec![DataField::from_chars("name", "Alice")]);
+
+        if let Some(field) = record.get_field_mut("name") {
+            field.set_name("renamed");
+        }
+        assert_eq!(
+            record.get_field("renamed").map(|f| f.get_name()),
+            Some("renamed")
+        );
+    }
+
+    #[test]
+    fn test_field_mut() {
+        let mut record = DataRecord::from(vec![DataField::from_chars("name", "Alice")]);
+
+        let storage = record.field_mut("name");
+        assert!(storage.is_some());
+    }
+
+    #[test]
+    fn test_fields_iterator() {
+        let record = DataRecord::from(vec![
+            DataField::from_chars("a", "1"),
+            DataField::from_chars("b", "2"),
+            DataField::from_chars("c", "3"),
+        ]);
+
+        let names: Vec<&str> = record.fields().map(|f| f.get_name()).collect();
+        assert_eq!(names, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn test_fields_mut_iterator() {
+        let mut record = DataRecord::from(vec![DataField::from_chars("a", "1")]);
+
+        for field in record.fields_mut() {
+            field.set_name("renamed");
+        }
+        assert_eq!(
+            record.get_field("renamed").map(|f| f.get_name()),
+            Some("renamed")
+        );
     }
 }

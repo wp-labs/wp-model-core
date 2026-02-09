@@ -179,6 +179,50 @@ impl FieldStorage {
             FieldStorage::Owned(_) => None,
         }
     }
+
+    /// Check if this is an Owned variant.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use wp_model_core::model::{FieldStorage, Field, Value, DataType};
+    ///
+    /// let field = Field::new(DataType::Chars, "test", Value::from("data"));
+    /// let owned = FieldStorage::from_owned(field);
+    /// assert!(owned.is_owned());
+    /// ```
+    #[inline]
+    pub fn is_owned(&self) -> bool {
+        matches!(self, FieldStorage::Owned(_))
+    }
+
+    /// Get a mutable reference to the underlying field.
+    ///
+    /// For the `Shared` variant, this converts to `Owned` first (clone-on-write).
+    /// For the `Owned` variant, returns a direct mutable reference.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use wp_model_core::model::{FieldStorage, Field, Value, DataType};
+    ///
+    /// let mut storage = FieldStorage::from_owned(Field::from_chars("name", "Alice"));
+    /// storage.as_field_mut().set_name("renamed");
+    /// assert_eq!(storage.as_field().get_name(), "renamed");
+    /// ```
+    pub fn as_field_mut(&mut self) -> &mut Field<Value> {
+        if let FieldStorage::Shared(_) = self {
+            let old = std::mem::replace(
+                self,
+                FieldStorage::Owned(Field::new(DataType::Ignore, "", Value::from(false))),
+            );
+            *self = FieldStorage::Owned(old.into_owned());
+        }
+        match self {
+            FieldStorage::Owned(field) => field,
+            FieldStorage::Shared(_) => unreachable!(),
+        }
+    }
 }
 
 // Implement Display by delegating to inner field
@@ -234,23 +278,7 @@ impl RecordItem for FieldStorage {
     }
 
     fn get_value_mut(&mut self) -> &mut Value {
-        match self {
-            FieldStorage::Shared(arc) => {
-                // If there are multiple references, we need to clone to get a mutable version
-                // This converts Shared to Owned variant
-                let field = Arc::try_unwrap(std::mem::replace(
-                    arc,
-                    Arc::new(Field::new(DataType::Ignore, "", Value::from(false))),
-                ))
-                .unwrap_or_else(|arc| (*arc).clone());
-                *self = FieldStorage::Owned(field);
-                match self {
-                    FieldStorage::Owned(f) => f.get_value_mut(),
-                    _ => unreachable!(),
-                }
-            }
-            FieldStorage::Owned(field) => field.get_value_mut(),
-        }
+        self.as_field_mut().get_value_mut()
     }
 }
 
@@ -280,6 +308,12 @@ impl LevelFormatAble for FieldStorage {
 impl From<Field<Value>> for FieldStorage {
     fn from(field: Field<Value>) -> Self {
         FieldStorage::Owned(field)
+    }
+}
+
+impl From<Arc<Field<Value>>> for FieldStorage {
+    fn from(arc: Arc<Field<Value>>) -> Self {
+        FieldStorage::Shared(arc)
     }
 }
 
@@ -416,5 +450,45 @@ mod tests {
         let owned = FieldStorage::from_owned(field);
         let _owned2 = owned.clone();
         assert!(owned.shared_count().is_none());
+    }
+
+    #[test]
+    fn test_from_arc_to_fieldstorage() {
+        let field = Field::new(DataType::Chars, "name", Value::from("Alice"));
+        let arc = Arc::new(field);
+        let storage: FieldStorage = arc.into();
+
+        assert!(storage.is_shared());
+        assert_eq!(storage.as_field().get_name(), "name");
+    }
+
+    #[test]
+    fn test_is_owned() {
+        let field = Field::new(DataType::Digit, "x", Value::from(1));
+        let owned = FieldStorage::from_owned(field.clone());
+        let shared = FieldStorage::from_shared(field);
+
+        assert!(owned.is_owned());
+        assert!(!shared.is_owned());
+    }
+
+    #[test]
+    fn test_as_field_mut_owned() {
+        let mut storage = FieldStorage::from_owned(Field::from_chars("name", "Alice"));
+        storage.as_field_mut().set_name("renamed");
+        assert_eq!(storage.as_field().get_name(), "renamed");
+        assert!(storage.is_owned());
+    }
+
+    #[test]
+    fn test_as_field_mut_shared() {
+        let field = Field::from_chars("name", "Alice");
+        let mut storage = FieldStorage::from_shared(field);
+        assert!(storage.is_shared());
+
+        // Mutating converts Shared to Owned
+        storage.as_field_mut().set_name("renamed");
+        assert!(storage.is_owned());
+        assert_eq!(storage.as_field().get_name(), "renamed");
     }
 }
