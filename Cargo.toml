@@ -1,6 +1,6 @@
 [package]
 name = "wp-model-core"
-version = "0.8.4"
+version = "0.8.5"
 edition = "2024"
 description = "Typed data model crate providing Value, Field, and Record primitives for the Warp PASE stack."
 license = "Apache-2.0"
@@ -14,6 +14,7 @@ documentation = "https://docs.rs/wp-model-core"
 [lib]
 name = "wp_model_core"
 [dependencies]
+bytes = "1"
 smol_str = { version = "0.3", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_derive = "1"
