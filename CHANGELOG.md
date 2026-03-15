@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.6]
+
+### Added
+
+#### Event ID Generator
+
+- New public `event_id` module exposing `next_wp_event_id()` for generating process-local monotonically increasing `wp_event_id` values
+- Seed initialization now mixes wall-clock time, process ID, and runtime entropy so restarts do not fall back to a fixed starting value
+- Unit tests cover monotonic generation within one process plus non-zero and variable seed composition when wall-clock time is unavailable
+
+### Changed
+
+- Align release automation with the library version admin flow in `_gal/adm.gxl`
+
 ## [0.8.5]
 
 ### Added
@@ -148,7 +162,8 @@ let owned_record = record.into_owned_record();
 - HTTP type support (request, status, agent, method)
 - Array type with subtype specification
 
-[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.8.5...HEAD
+[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.8.6...HEAD
+[0.8.6]: https://github.com/wp-labs/wp-model-core/compare/v0.8.5...v0.8.6
 [0.8.5]: https://github.com/wp-labs/wp-model-core/compare/v0.8.4...v0.8.5
 [0.8.4]: https://github.com/wp-labs/wp-model-core/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/wp-labs/wp-model-core/compare/v0.7.2...v0.8.3
