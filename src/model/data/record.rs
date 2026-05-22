@@ -77,7 +77,8 @@ where
         if self.items.iter().any(|f| f.get_name() == WP_EVENT_ID) {
             return;
         }
-        self.items.insert(0, T::from_chars(WP_EVENT_ID, id.to_string()));
+        self.items
+            .insert(0, T::from_chars(WP_EVENT_ID, id.to_string()));
     }
     pub fn test_value() -> Self {
         let data = vec![
