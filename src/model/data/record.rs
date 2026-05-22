@@ -547,7 +547,7 @@ mod tests {
         assert_eq!(record.items.len(), original_len + 1);
         // ID should be inserted at position 0
         assert_eq!(record.items[0].get_name(), WP_EVENT_ID);
-        assert_eq!(record.items[0].get_value(), &Value::Digit(12345));
+        assert_eq!(record.items[0].get_value(), &Value::Chars("12345".into()));
     }
 
     #[test]
@@ -563,7 +563,7 @@ mod tests {
         assert_eq!(record.id, 200);
         assert_eq!(record.items.len(), len_after_first);
         // Original ID in items should remain
-        assert_eq!(record.get_value(WP_EVENT_ID), Some(&Value::Digit(100)));
+        assert_eq!(record.get_value(WP_EVENT_ID), Some(&Value::Chars("100".into())));
     }
 
     // ========== RecordItem trait tests ==========
