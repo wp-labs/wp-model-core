@@ -563,7 +563,10 @@ mod tests {
         assert_eq!(record.id, 200);
         assert_eq!(record.items.len(), len_after_first);
         // Original ID in items should remain
-        assert_eq!(record.get_value(WP_EVENT_ID), Some(&Value::Chars("100".into())));
+        assert_eq!(
+            record.get_value(WP_EVENT_ID),
+            Some(&Value::Chars("100".into()))
+        );
     }
 
     // ========== RecordItem trait tests ==========
