@@ -3,7 +3,6 @@ use crate::model::{DataType, FNameStr, FValueStr, Value};
 use crate::model::{FieldRef, Maker};
 use crate::traits::AsValueRef;
 use serde_derive::{Deserialize, Serialize};
-use std::convert::TryFrom;
 use std::fmt::{Display, Formatter};
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
@@ -78,11 +77,7 @@ where
         if self.items.iter().any(|f| f.get_name() == WP_EVENT_ID) {
             return;
         }
-        let Ok(id_i64) = i64::try_from(id) else {
-            // 事件 ID 超出 i64 无法表示，保持记录原状
-            return;
-        };
-        self.items.insert(0, T::from_digit(WP_EVENT_ID, id_i64));
+        self.items.insert(0, T::from_chars(WP_EVENT_ID, id.to_string()));
     }
     pub fn test_value() -> Self {
         let data = vec![
