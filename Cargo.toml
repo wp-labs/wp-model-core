@@ -1,6 +1,6 @@
 [package]
 name = "wp-model-core"
-version = "0.8.9" # @gxl:set(version)
+version = "0.9.0" # @gxl:set(version)
 edition = "2024"
 description = "Typed data model crate providing Value, Field, and Record primitives for the Warp PASE stack."
 license = "Apache-2.0"
@@ -20,5 +20,6 @@ serde = { version = "1", features = ["derive"] }
 serde_derive = "1"
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
+num-bigint = { version = "0.4", features = ["serde"] }
 [dev-dependencies]
 serde_json = "1"

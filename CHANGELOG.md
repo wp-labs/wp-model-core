@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0]
+
+### ⚠️ BREAKING CHANGES
+
+- **`Value` enum 新增 `BigUint` 变体**：`Value::BigUint(num_bigint::BigUint)` 任意精度无符号整数；穷尽 `match Value` 的调用方需补充该分支
+- **`DataType` enum 新增 `BigInt` 变体**（serde `"bigint"`），作为 `Value::BigUint` 字段的元类型；穷尽 `match DataType` 的调用方需补充该分支
+
+### Added
+
+#### Arbitrary-Precision Integer (`Value::BigUint`)
+
+- `Value::BigUint(num_bigint::BigUint)` 变体——任意精度无符号整数，无精度损失；用于 IPv4/IPv6 统一数值键等超出 `i64` 范围的整数场景
+- `From<BigUint> for Value` 实现
+- `Display` 输出纯十进制字符串
+- `tag()` 返回 `"BigUint"`；`is_empty()` 恒为 `false`
+- **serde 自定义序列化**：以十进制字符串形式（`{"BigUint":"134744072"}`），避免 `num-bigint` 默认内部 limbs 数组格式（跨语言不友好、暴露内部结构），且避免超出 JSON number 精度；反序列化接受十进制字符串
+
+#### BigInt DataType
+
+- `DataType::BigInt` 变体（serde rename `"bigint"`），作为 `Value::BigUint` 字段的元类型
+- `BIGINT` 常量（`"bigint"`）
+- `DataType::from("bigint")` / `static_name()` 支持
+
+### Dependencies
+
+- Add `num-bigint = "0.4"`（feature `serde`）
+
+### Migration Guide
+
+穷尽 `match Value` / `match DataType` 的调用方需为新增变体补充分支：
+
+- `Value::BigUint(v)` → 通常以 `v.to_string()` 输出十进制字符串，或按 `BigUint` 语义处理（比较/区间运算）
+- `DataType::BigInt` → 可映射为字符串/任意精度数字列（如 PostgreSQL `numeric`），格式化输出十进制字符串
+
 ## [0.8.6]
 
 ### Added
@@ -162,7 +196,8 @@ let owned_record = record.into_owned_record();
 - HTTP type support (request, status, agent, method)
 - Array type with subtype specification
 
-[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.8.6...HEAD
+[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/wp-labs/wp-model-core/compare/v0.8.9...v0.9.0
 [0.8.6]: https://github.com/wp-labs/wp-model-core/compare/v0.8.5...v0.8.6
 [0.8.5]: https://github.com/wp-labs/wp-model-core/compare/v0.8.4...v0.8.5
 [0.8.4]: https://github.com/wp-labs/wp-model-core/compare/v0.8.3...v0.8.4

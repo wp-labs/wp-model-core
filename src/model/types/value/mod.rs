@@ -16,8 +16,27 @@ use std::sync::Arc;
 pub use composite::{IgnoreT, ObjectValue};
 pub use custom::{IdCardT, MobilePhoneT};
 pub use network::{DomainT, EmailT, IpNetValue, UrlValue};
+pub use num_bigint::BigUint;
 pub use primitive::{DateTimeValue, DigitValue, FloatValue, HexT};
+use serde::de::{self, Deserializer};
+use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+
+/// `BigUint` 的自定义 serde：以十进制字符串序列化，避免 num-bigint 默认的
+/// 内部 limbs 数组格式（跨语言不友好、暴露内部结构），且避免超出 JSON number 精度。
+mod biguint_serde {
+    use super::*;
+
+    pub fn serialize<S: Serializer>(value: &BigUint, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&value.to_string())
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<BigUint, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        BigUint::from_str(&s).map_err(de::Error::custom)
+    }
+}
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct SymbolValue(pub SmolStr);
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -28,6 +47,10 @@ pub enum Value {
     Chars(FValueStr),
     Float(FloatValue),
     Digit(DigitValue),
+    /// 任意精度无符号整数（十进制显示/序列化，无精度损失）。
+    /// 用于 IPv4/IPv6 统一数值键等超出 i64 范围的整数场景。
+    #[serde(with = "biguint_serde")]
+    BigUint(BigUint),
 
     Time(DateTimeValue),
 
@@ -169,6 +192,11 @@ impl From<i64> for Value {
         Self::Digit(value)
     }
 }
+impl From<BigUint> for Value {
+    fn from(value: BigUint) -> Self {
+        Self::BigUint(value)
+    }
+}
 impl From<f64> for Value {
     fn from(value: f64) -> Self {
         Self::Float(value)
@@ -256,6 +284,9 @@ impl Display for Value {
             Value::Digit(digit) => {
                 write!(f, "{}", digit)
             }
+            Value::BigUint(v) => {
+                write!(f, "{}", v)
+            }
             Value::Bool(bool) => {
                 write!(f, "{}", bool)
             }
@@ -329,6 +360,7 @@ mod tests {
     use super::*;
     use smol_str::SmolStr;
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    use std::str::FromStr;
 
     #[test]
     fn test_from_primitives() {
@@ -351,6 +383,37 @@ mod tests {
         // f64
         let v: Value = 3.24f64.into();
         assert_eq!(v, Value::Float(3.24));
+    }
+
+    #[test]
+    fn test_biguint_serde_roundtrip() {
+        // 超出 u64/i64 的 IPv6 统一键
+        let v: Value = BigUint::from_str("382824323044708348099391746388336347272")
+            .unwrap()
+            .into();
+        let json = serde_json::to_string(&v).expect("serialize");
+        let back: Value = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, v);
+        // 大整数以字符串形式序列化（而非 num-bigint 默认 limbs 数组），避免超出 JSON number 精度
+        assert_eq!(
+            json,
+            "{\"BigUint\":\"382824323044708348099391746388336347272\"}"
+        );
+    }
+
+    #[test]
+    fn test_from_biguint() {
+        // u32 → Value::BigUint
+        let v: Value = BigUint::from(134744072u32).into();
+        assert!(matches!(v, Value::BigUint(_)));
+        assert_eq!(v.to_string(), "134744072");
+
+        // 超出 u64/i64 的 IPv6 统一键（2^128）
+        let v: Value = BigUint::from_str("340282366920938463463374607431768211456")
+            .unwrap()
+            .into();
+        assert!(matches!(v, Value::BigUint(_)));
+        assert_eq!(v.to_string(), "340282366920938463463374607431768211456");
     }
 
     #[test]

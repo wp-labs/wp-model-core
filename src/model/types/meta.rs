@@ -13,6 +13,9 @@ pub enum DataType {
     PeekSymbol,
     #[serde(rename = "digit")]
     Digit,
+    /// 任意精度无符号整数（配合 `Value::BigUint`，十进制字符串存储/绑定）
+    #[serde(rename = "bigint")]
+    BigInt,
     #[serde(rename = "float")]
     Float,
     #[serde(rename = "ignore")]
@@ -84,6 +87,7 @@ pub enum DataType {
 
 pub const CHARS: &str = "chars";
 pub const DIGIT: &str = "digit";
+pub const BIGINT: &str = "bigint";
 pub const BOOL: &str = "bool";
 pub const FLOAT: &str = "float";
 pub const TIME: &str = "time";
@@ -168,6 +172,7 @@ impl DataType {
             SYMBOL => Ok(DataType::Symbol),
             PEEK_SYMBOL => Ok(DataType::PeekSymbol),
             DIGIT => Ok(DataType::Digit),
+            BIGINT => Ok(DataType::BigInt),
             FLOAT => Ok(DataType::Float),
             AUTO => Ok(DataType::Auto),
             BASE64 => Ok(DataType::Base64),
@@ -232,6 +237,7 @@ impl DataType {
             DataType::Symbol => SYMBOL,
             DataType::PeekSymbol => PEEK_SYMBOL,
             DataType::Digit => DIGIT,
+            DataType::BigInt => BIGINT,
             DataType::Float => FLOAT,
             DataType::HttpRequest => HTTP_REQUEST,
             DataType::HttpStatus => HTTP_STATUS,

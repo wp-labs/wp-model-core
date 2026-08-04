@@ -177,6 +177,7 @@ impl Value {
             Value::Chars(_) => "Chars",
             Value::Symbol(_) => "Symbol",
             Value::Digit(_) => "Digit",
+            Value::BigUint(_) => "BigUint",
             Value::Time(_) => "Time",
             Value::Hex(_) => "Hex",
             Value::Float(_) => "Float",
@@ -200,6 +201,7 @@ impl Value {
             | Value::IpAddr(_)
             | Value::Float(_)
             | Value::Digit(_)
+            | Value::BigUint(_)
             | Value::Bool(_)
             | Value::Hex(_) => false,
             Value::Domain(v) => v.0.is_empty(),
