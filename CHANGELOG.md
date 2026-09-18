@@ -5,11 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.1]
+## [0.11.0]
+
+### ⚠️ BREAKING CHANGES
+
+- **`DataType::Array` 的载荷类型 `String` → `ArraySubtype`**：子类型仍是自由字符串（不校验已知类型名，旧名 `digit` 照样收），但载荷私有、**四条构造路径全部规范化**（`ArraySubtype::new` / `From<&str>` / `From<String>` / serde 反序列化）：前后空白 trim，trim 后为空 → `"auto"`。因此 `Array("int ")` 与 `Array("int")` 不再可能同时存在（`DataType` 派生 `PartialEq`/`Eq`/`Hash`，此前两者不等、哈希不同，会让类型比对与类型映射**静默不匹配**）；wire 形态不变，但带空格的旧 wire 值读进来即被规范化。下游把 `DataType::Array(s.to_string())` 改为 `DataType::Array(s.to_string().into())`（或 `s.as_str().into()`）即可；只做 `match DataType::Array(_)` 的调用方不受影响。
 
 ### Changed
 
-- **类型名解析容忍前后空白**：`from(" int ")` / `from(" array/int ")` / `to_arr(" array/int ")` 现在规范化到 `Int` / `Array("int")`；此前报 `unknown meta`。全空白仍报错（不静默给 `Auto`），大小写仍严格（`"Int"` / `"ARRAY/int"` 被拒）。`Array(subtype)` 仍是自由字符串：仅规范化**前后**空白，内部空白保留；规范化只落在 **parse 侧**，不覆盖 serde 反序列化与 `Display` 输出。
+- **类型名解析容忍前后空白**：`from(" int ")` / `from(" array/int ")` / `to_arr(" array/int ")` 现在规范化到 `Int` / `Array("int")`；此前报 `unknown meta`。全空白仍报错（不静默给 `Auto`），大小写仍严格（`"Int"` / `"ARRAY/int"` 被拒）。子类型只规范化**前后**空白，**内部空白保留**（`"array/i nt"` → `Array("i nt")`）。
 
 ### Removed
 
@@ -22,7 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
-- 规范化边界钉死：`array /int`（`array` 与 `/` 之间空白）、Unicode 空白（NBSP / 表意空格被削、ZWSP 不削）、子类型仅空白 → `auto`、**内部空白刻意保留**、错误信息回显 trim 后的名字、`to_arr("")` / `to_arr("   ")` 直接调用的报错路径、parse 侧与 serde 侧的不对称。
+- 规范化作为**类型不变量**钉死：`Array("int ".into()) == Array("int".into())`、serde `{"array":"int "}` 读 → `Array("int")` 且写出为 `{"array":"int"}`、`ArraySubtype::new("")` / `new("  ")` → `"auto"`。
+- 边界：`array /int`（`array` 与 `/` 之间空白）、Unicode 空白（NBSP / 表意空格 / 行分隔符被削、ZWSP 不削）、子类型仅空白 → `auto`、**内部空白刻意保留**、错误信息回显 trim 后的名字、`to_arr("")` / `to_arr("   ")` 的直接报错路径。
 
 ## [0.10.0]
 
@@ -232,8 +237,8 @@ let owned_record = record.into_owned_record();
 - HTTP type support (request, status, agent, method)
 - Array type with subtype specification
 
-[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.10.1...HEAD
-[0.10.1]: https://github.com/wp-labs/wp-model-core/compare/v0.10.0...v0.10.1
+[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/wp-labs/wp-model-core/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/wp-labs/wp-model-core/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/wp-labs/wp-model-core/compare/v0.8.9...v0.9.0
 [0.8.6]: https://github.com/wp-labs/wp-model-core/compare/v0.8.5...v0.8.6

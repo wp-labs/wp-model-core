@@ -1,6 +1,80 @@
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
 
+/// `DataType::Array` 的子类型：**自由字符串**（不校验是否为已知类型名），但**前后空白已规范化**。
+///
+/// 载荷私有 ⇒ 构造不出脏值：外部只能经 [`ArraySubtype::new`] / `From<&str>` / `From<String>` /
+/// serde 反序列化拿到它，四条路都会 trim（trim 后为空 → `"auto"`，与 `to_arr("array")` /
+/// `to_arr("array/")` 同口径）。
+///
+/// 为何值得单开一个类型：`DataType` 派生 `PartialEq`/`Eq`/`Hash`，若子类型能带空白，
+/// `Array("int ")` 与 `Array("int")` 就是**两个不同类型** —— 用元类型做等值判断、当
+/// `HashMap` key 查类型映射时会**静默不匹配**（不报错）。做成不变量后这类坑在类型层面消失。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ArraySubtype(String);
+
+impl ArraySubtype {
+    /// 规范化构造：trim 前后空白；trim 后为空 → `"auto"`。
+    pub fn new(sub: &str) -> Self {
+        let sub = sub.trim();
+        Self(if sub.is_empty() {
+            "auto".to_string()
+        } else {
+            sub.to_string()
+        })
+    }
+
+    /// 规范化后的子类型（只削前后空白，**内部空白保留**）。
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for ArraySubtype {
+    fn from(sub: &str) -> Self {
+        Self::new(sub)
+    }
+}
+
+impl From<String> for ArraySubtype {
+    fn from(sub: String) -> Self {
+        Self::new(&sub)
+    }
+}
+
+impl std::ops::Deref for ArraySubtype {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for ArraySubtype {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// 与 `&str` 直接比较，便于 `if sub == "int"` 这类写法。
+impl PartialEq<&str> for ArraySubtype {
+    fn eq(&self, other: &&str) -> bool {
+        self.0 == *other
+    }
+}
+
+impl Serialize for ArraySubtype {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+impl<'de> Deserialize<'de> for ArraySubtype {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // wire 输入同样过规范化入口，否则 `{"array":"int "}` 会绕过不变量。
+        Ok(Self::new(&String::deserialize(deserializer)?))
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Hash, Eq, Serialize, Deserialize, Default)]
 pub enum DataType {
     #[serde(rename = "bool")]
@@ -78,7 +152,7 @@ pub enum DataType {
     #[serde(rename = "obj")]
     Obj,
     #[serde(rename = "array")]
-    Array(String),
+    Array(ArraySubtype),
     #[serde(rename = "id_card")]
     IdCard,
     #[serde(rename = "mobile_phone")]
@@ -208,7 +282,7 @@ impl DataType {
                 if sub.is_empty() {
                     return Ok(DataType::Array("auto".into()));
                 }
-                return Ok(DataType::Array(sub.to_string()));
+                return Ok(DataType::Array(sub.into()));
             }
             return Err(MetaErr::UnSupport(format!(
                 "unknown meta: {} (array missing subtype)",
@@ -437,11 +511,16 @@ mod tests {
             DataType::from("array/   ").unwrap(),
             DataType::Array("auto".into())
         );
-        // 为什么必须 trim：未规范化的两个值确实是**不同类型**（derived PartialEq）
-        assert_ne!(
+        // 不变量（`ArraySubtype` 载荷私有 + 构造必规范化）：两种写法**就是同一个类型**，
+        // 不可能再出现“看起来一样、实则不相等”的静默不匹配。
+        assert_eq!(
             DataType::Array("int ".into()),
-            DataType::Array("int".into()),
-            "带空白与不带空白的子类型不等 —— 不 trim 就会静默不匹配"
+            DataType::Array("int".into())
+        );
+        assert_eq!(
+            DataType::Array("int ".into()).to_string(),
+            "array/int",
+            "带空格的输入也产出规范化的显示形态"
         );
         // 规范化后的子类型与原样写法**同类型**（键/比较/Display 一致）
         assert_eq!(
@@ -480,9 +559,9 @@ mod tests {
         assert!(DataType::from("ARRAY/int").is_err());
     }
 
-    /// trim 的**边界与作用域**：把“刻意如此”的部分也钉住，避免以后被“顺手全量 normalize”。
+    /// trim 的**边界**：把“刻意如此”的部分钉住，避免以后被“顺手全量 normalize”。
     #[test]
-    fn test_trim_boundaries_and_parse_only_scope() {
+    fn test_trim_boundaries() {
         // `array` 与前缀 `/` 之间带空白
         assert_eq!(
             DataType::from("array /int").unwrap(),
@@ -514,11 +593,22 @@ mod tests {
         // 直接调用 `to_arr`（不经 `from`）的报错路径
         assert!(DataType::to_arr("").is_err());
         assert!(DataType::to_arr("   ").is_err());
-        // 已知不对称：规范化只在 **parse 侧**。serde 反序列化不过 trim，
-        // 所以 `{"array":"int "}` 仍是 `Array("int ")`（≠ `from("array/int ")`）。
+        // 规范化是**类型不变量**：`ArraySubtype` 四条构造路径（new / From<&str> / From<String> /
+        // serde 反序列化）都过规范化，所以带空格的 wire 输入与解析入口得到**同一个**类型。
         let wire: DataType = serde_json::from_str(r#"{"array":"int "}"#).unwrap();
-        assert_eq!(wire, DataType::Array("int ".into()));
-        assert_ne!(wire, DataType::from("array/int ").unwrap());
+        assert_eq!(wire, DataType::Array("int".into()));
+        assert_eq!(wire, DataType::from("array/int ").unwrap());
+        // 直接构造（不经解析）也逃不掉：`ArraySubtype` 载荷私有，`Array("int ".into())`
+        // 进去就是 `Array("int")`。
+        assert_eq!(
+            DataType::Array("int ".into()),
+            DataType::Array("int".into())
+        );
+        assert_eq!(ArraySubtype::new("  ").as_str(), "auto");
+        assert_eq!(ArraySubtype::new("").as_str(), "auto");
+        assert_eq!(ArraySubtype::new(" int ").as_str(), "int");
+        // wire 写出同样是规范化的（不会再写出 `"array/int "`）
+        assert_eq!(serde_json::to_string(&wire).unwrap(), r#"{"array":"int"}"#);
     }
 
     #[test]

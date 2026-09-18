@@ -152,7 +152,7 @@ where
     pub fn from_arr<S: Into<FNameStr>>(name: S, val: Vec<Field<Value>>) -> Self {
         if let Some(f) = val.first() {
             let meta = f.get_meta().to_string();
-            Self::new(DataType::Array(meta), name.into(), T::make(val))
+            Self::new(DataType::Array(meta.into()), name.into(), T::make(val))
         } else {
             Self::new(DataType::Array("auto".into()), name.into(), T::make(val))
             //unreachable!("arr is empty");

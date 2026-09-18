@@ -17,7 +17,7 @@ pub mod types;
 
 pub use data::field_ref::FieldRef;
 pub use data::storage::FieldStorage;
-pub use types::meta::{DataType, MetaErr};
+pub use types::meta::{ArraySubtype, DataType, MetaErr};
 pub use types::value::{DateTimeValue, DomainT, EmailT, IdCardT, Maker, MobilePhoneT, UrlValue};
 pub use types::value::{FloatValue, HexT, IgnoreT, IntValue, IpNetValue};
 
