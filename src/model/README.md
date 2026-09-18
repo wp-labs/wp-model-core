@@ -121,11 +121,8 @@ if let Value::Chars(name) = field.value_ref() {
 ```
 
 3. **比较操作**：
-   - 实现`Comparable` trait支持多种比较操作：
-   ```rust
-   use orion_exp::{CmpOperator, ValueComparator};
-   assert!(field1.compare_with(&field2, &CmpOperator::Eq));
-   ```
+   - 比较语义（`CmpOperator` / `ValueComparator`）由**外部** `orion_exp` 适配层实现，本 crate 不提供：
+     [`Field`](../../src/model/data/field.rs) 只负责携带值，比较实现需在下游以适配器形式补齐。
 
 
 

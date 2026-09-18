@@ -51,4 +51,4 @@ Tests live beside their modules (`mod tests` blocks). Name tests `test_*` and fo
 - Issue tracking and releases: GitHub [`wp-labs/wp-model-core`](https://github.com/wp-labs/wp-model-core)
 
 ## License
-Distributed under the Elastic License 2.0. See [`LICENSE`](LICENSE) for details.
+Distributed under the Apache License 2.0. See [`LICENSE`](LICENSE) for details.

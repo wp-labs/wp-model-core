@@ -5,13 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1]
+
+### Changed
+
+- **类型名解析容忍前后空白**：`from(" int ")` / `from(" array/int ")` / `to_arr(" array/int ")` 现在规范化到 `Int` / `Array("int")`；此前报 `unknown meta`。全空白仍报错（不静默给 `Auto`），大小写仍严格（`"Int"` / `"ARRAY/int"` 被拒）。`Array(subtype)` 仍是自由字符串：仅规范化**前后**空白，内部空白保留；规范化只落在 **parse 侧**，不覆盖 serde 反序列化与 `Display` 输出。
+
+### Removed
+
+- **删除 `src/model/compare.rs`**：死文件（未挂进模块树、`orion_exp` 非依赖、`match` 缺 `Value::BigUint` 分支），自 0.9.0 起就不参与编译；比较语义由外部 `orion_exp` 适配层提供。
+
+### Fixed
+
+- **README 的 license 与依赖列表与事实不符**：正文写 `Elastic License 2.0`（`LICENSE` / `Cargo.toml` / crates.io 元数据均为 Apache-2.0，0.8.4 起已切换）；依赖列表写 `ipnet`（既非依赖也无引用，`IpNetValue` 用 `std::net::IpAddr`），改列 `num-bigint`。
+- **0.10.0 段对 `to_arr` 的描述不实**：`Array` 子类型是自由字符串，`to_arr("array/digit")` 并不改名。
+
+### Tests
+
+- 规范化边界钉死：`array /int`（`array` 与 `/` 之间空白）、Unicode 空白（NBSP / 表意空格被削、ZWSP 不削）、子类型仅空白 → `auto`、**内部空白刻意保留**、错误信息回显 trim 后的名字、`to_arr("")` / `to_arr("   ")` 直接调用的报错路径、parse 侧与 serde 侧的不对称。
+
 ## [0.10.0]
 
 ### ⚠️ BREAKING CHANGES
 
 - **`Value::Digit` → `Value::Int`**：整数变体正名为 `Int`，与 `Value::Float` 成对；类型别名 `DigitValue` → `IntValue`。穷尽 `match Value` 的调用方需改名
 - **`Value` 的 serde wire 名随变体名改变**：`{"Digit":42}` → `{"Int":42}`（`Value` 是裸 `#[derive(Serialize)]`，本次**有意不加**兼容别名）；`Value::tag()` 由 `"Digit"` 改为 `"Int"`
-- **`DataType::Digit` → `DataType::Int`**：serde 名 `"digit"` → `"int"`，常量 `DIGIT` → `INT`，`DataType::from("digit")` / `to_arr("array/digit")` / `static_name()` / `Display` 一并改为 `int`。穷尽 `match DataType` 的调用方需改名
+- **`DataType::Digit` → `DataType::Int`**：serde 名 `"digit"` → `"int"`，常量 `DIGIT` → `INT`，`DataType::from("digit")` / `static_name()` / `Display` 一并改为 `int`。**`Array` 子类型不受影响**（自由字符串，不做已知类型名校验/改名：`to_arr("array/digit")` 仍得 `Array("digit")`）。穷尽 `match DataType` 的调用方需改名
 - **公开构造器 `from_digit` → `from_int`**（`Field` / `RecordItemFactory` / `Record` / `FieldStorage`）
 
 ### Changed
@@ -213,7 +232,8 @@ let owned_record = record.into_owned_record();
 - HTTP type support (request, status, agent, method)
 - Array type with subtype specification
 
-[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/wp-labs/wp-model-core/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/wp-labs/wp-model-core/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/wp-labs/wp-model-core/compare/v0.8.9...v0.9.0
 [0.8.6]: https://github.com/wp-labs/wp-model-core/compare/v0.8.5...v0.8.6

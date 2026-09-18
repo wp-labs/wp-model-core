@@ -192,9 +192,13 @@ impl DataType {
         // 外部可直接调本函数，所以外层空白也在这里规范化（`from` 已 trim 过一遍）。
         let value = value.trim();
         if let Some(rest) = value.strip_prefix(ARRAY) {
-            // 子类型是**自由字符串**（`Array(String)`），不校验是否为已知类型；但空白必须
-            // 规范化：`Array("int ")` 与 `Array("int")` 是两个不同的类型，下游按子类型
-            // 字符串比较时会**静默不匹配**，且 `Display` 会输出 `array/int `（尾随空格）。
+            // 子类型是**自由字符串**（`Array(String)`），不校验是否为已知类型；但**前后**空白
+            // 必须规范化：`Array("int ")` 与 `Array("int")` 是两个不同的类型，下游按子类型
+            // 字符串比较时会**静默不匹配**。
+            //
+            // 边界（刻意如此）：只削前后空白，**内部空白保留**（`"array/i nt"` → `Array("i nt")`）；
+            // 规范化只落在本函数与 `from`（parse 侧）——serde 反序列化（`{"array":"int "}`）
+            // 与 `Display`/`String::from` 产出不经此路，两侧不对称由测试钉住。
             let rest = rest.trim();
             if rest.is_empty() {
                 return Ok(DataType::Array("auto".into()));
@@ -474,6 +478,47 @@ mod tests {
         // 大小写严格（未变）
         assert!(DataType::from("Int").is_err());
         assert!(DataType::from("ARRAY/int").is_err());
+    }
+
+    /// trim 的**边界与作用域**：把“刻意如此”的部分也钉住，避免以后被“顺手全量 normalize”。
+    #[test]
+    fn test_trim_boundaries_and_parse_only_scope() {
+        // `array` 与前缀 `/` 之间带空白
+        assert_eq!(
+            DataType::from("array /int").unwrap(),
+            DataType::Array("int".into())
+        );
+        // Unicode 空白：`str::trim` 走 Unicode White_Space，NBSP / 表意空格 / 行分隔符都削
+        for raw in [
+            "\u{00A0}int\u{00A0}",
+            "\u{3000}int\u{3000}",
+            "\u{2028}int\u{2028}",
+        ] {
+            assert_eq!(DataType::from(raw).unwrap(), DataType::Int, "{raw:?}");
+        }
+        // …但 ZWSP（U+200B）不是 White_Space，不削 → 依旧是未知类型
+        assert!(DataType::from("\u{200B}int").is_err());
+        // 子类型只有制表/换行/空格 → auto
+        assert_eq!(
+            DataType::from("array/\t\n ").unwrap(),
+            DataType::Array("auto".into())
+        );
+        // **内部空白刻意保留**（只削前后）
+        assert_eq!(
+            DataType::from("array/i nt").unwrap(),
+            DataType::Array("i nt".into())
+        );
+        // 错误信息回显的是 trim 后的名字
+        let err = DataType::from("  unknown  ").unwrap_err().to_string();
+        assert!(err.contains("unknown meta: unknown"), "{err}");
+        // 直接调用 `to_arr`（不经 `from`）的报错路径
+        assert!(DataType::to_arr("").is_err());
+        assert!(DataType::to_arr("   ").is_err());
+        // 已知不对称：规范化只在 **parse 侧**。serde 反序列化不过 trim，
+        // 所以 `{"array":"int "}` 仍是 `Array("int ")`（≠ `from("array/int ")`）。
+        let wire: DataType = serde_json::from_str(r#"{"array":"int "}"#).unwrap();
+        assert_eq!(wire, DataType::Array("int ".into()));
+        assert_ne!(wire, DataType::from("array/int ").unwrap());
     }
 
     #[test]
