@@ -132,6 +132,9 @@ pub enum MetaErr {
 
 impl DataType {
     pub fn from(value: &str) -> Result<Self, MetaErr> {
+        // 类型名通常从文本读入（schema / DDL / 配置），先规范化**外层**空白：
+        // `" int "` → `Int`。大小写仍然是严格的（`"Int"` 不被接受，见常量表）。
+        let value = value.trim();
         match value {
             // Aliases (namespaced or clearer variants)
             // De-facto standard in HTTP access logs: Common Log Format (CLF)
@@ -186,6 +189,8 @@ impl DataType {
         }
     }
     pub fn to_arr(value: &str) -> Result<Self, MetaErr> {
+        // 外部可直接调本函数，所以外层空白也在这里规范化（`from` 已 trim 过一遍）。
+        let value = value.trim();
         if let Some(rest) = value.strip_prefix(ARRAY) {
             // 子类型是**自由字符串**（`Array(String)`），不校验是否为已知类型；但空白必须
             // 规范化：`Array("int ")` 与 `Array("int")` 是两个不同的类型，下游按子类型
@@ -440,6 +445,35 @@ mod tests {
             DataType::from("array/int").unwrap()
         );
         assert_eq!(format!("{}", DataType::Array("int".into())), "array/int");
+    }
+
+    /// 空白规范化（外层名字）：类型名多从文本读入（schema / DDL / 配置），
+    /// 前后空白不应造成“看起来一样、实则解析失败 / 不同类型”的陷阱。
+    ///
+    /// 大小写**仍是严格的**：`"Int"` / `"ARRAY/int"` 依旧被拒（不在本次变更范围）。
+    #[test]
+    fn test_from_trims_outer_whitespace_and_stays_case_sensitive() {
+        assert_eq!(DataType::from(" int ").unwrap(), DataType::Int);
+        assert_eq!(DataType::from("  bigint  ").unwrap(), DataType::BigInt);
+        assert_eq!(DataType::from("\tchars\n").unwrap(), DataType::Chars);
+        assert_eq!(
+            DataType::from(" array/int ").unwrap(),
+            DataType::Array("int".into())
+        );
+        // `to_arr` 是公开入口，直接调用时同样规范化
+        assert_eq!(
+            DataType::to_arr(" array/int ").unwrap(),
+            DataType::Array("int".into())
+        );
+        assert_eq!(
+            DataType::to_arr("  array  ").unwrap(),
+            DataType::Array("auto".into())
+        );
+        // 全空白 → 与未知类型同等报错（不静默给 Auto）
+        assert!(DataType::from("   ").is_err());
+        // 大小写严格（未变）
+        assert!(DataType::from("Int").is_err());
+        assert!(DataType::from("ARRAY/int").is_err());
     }
 
     #[test]
