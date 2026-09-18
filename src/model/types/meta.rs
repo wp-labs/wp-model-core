@@ -187,10 +187,15 @@ impl DataType {
     }
     pub fn to_arr(value: &str) -> Result<Self, MetaErr> {
         if let Some(rest) = value.strip_prefix(ARRAY) {
+            // 子类型是**自由字符串**（`Array(String)`），不校验是否为已知类型；但空白必须
+            // 规范化：`Array("int ")` 与 `Array("int")` 是两个不同的类型，下游按子类型
+            // 字符串比较时会**静默不匹配**，且 `Display` 会输出 `array/int `（尾随空格）。
+            let rest = rest.trim();
             if rest.is_empty() {
                 return Ok(DataType::Array("auto".into()));
             }
             if let Some(sub) = rest.strip_prefix('/') {
+                let sub = sub.trim();
                 if sub.is_empty() {
                     return Ok(DataType::Array("auto".into()));
                 }
@@ -395,6 +400,46 @@ mod tests {
             DataType::to_arr("array/chars").unwrap(),
             DataType::Array("chars".into())
         );
+    }
+
+    /// `Array(subtype)` 的子类型是自由字符串：**容忍**任意（含已退休的 `digit`），
+    /// 但**空白必须规范化**（否则 `Array("int ")` 与 `Array("int")` 静默不等）。
+    #[test]
+    fn test_to_arr_subtype_is_free_form_but_whitespace_normalized() {
+        // 自由字符串：不校验已知类型名，旧名 `digit` 也照样收（0.10.0 的既有决定）
+        assert_eq!(
+            DataType::from("array/digit").unwrap(),
+            DataType::Array("digit".into())
+        );
+        assert_eq!(
+            DataType::from("array/whatever").unwrap(),
+            DataType::Array("whatever".into())
+        );
+        // 空白规范化：三种写法都得 `Array("int")`
+        for raw in ["array/int ", "array/ int", "array/  int  "] {
+            assert_eq!(
+                DataType::from(raw).unwrap(),
+                DataType::Array("int".into()),
+                "{raw:?} 应规范化到 Array(\"int\")"
+            );
+        }
+        // 只有空白（或全空白）的子类型 → auto
+        assert_eq!(
+            DataType::from("array/   ").unwrap(),
+            DataType::Array("auto".into())
+        );
+        // 为什么必须 trim：未规范化的两个值确实是**不同类型**（derived PartialEq）
+        assert_ne!(
+            DataType::Array("int ".into()),
+            DataType::Array("int".into()),
+            "带空白与不带空白的子类型不等 —— 不 trim 就会静默不匹配"
+        );
+        // 规范化后的子类型与原样写法**同类型**（键/比较/Display 一致）
+        assert_eq!(
+            DataType::from("array/int ").unwrap(),
+            DataType::from("array/int").unwrap()
+        );
+        assert_eq!(format!("{}", DataType::Array("int".into())), "array/int");
     }
 
     #[test]
