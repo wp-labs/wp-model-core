@@ -1,11 +1,15 @@
 # wp-model-core
 
-![CI](https://github.com/wp-labs/wp-model-core/workflows/CI/badge.svg)
+[![Crates.io](https://img.shields.io/crates/v/wp-model-core.svg)](https://crates.io/crates/wp-model-core)
+[![Docs.rs](https://docs.rs/wp-model-core/badge.svg)](https://docs.rs/wp-model-core)
+[![CI](https://img.shields.io/github/actions/workflow/status/wp-labs/wp-model-core/ci.yml?branch=main)](https://github.com/wp-labs/wp-model-core/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/wp-labs/wp-model-core/graph/badge.svg?token=6SVCXBHB6B)](https://codecov.io/gh/wp-labs/wp-model-core)
-![License](https://img.shields.io/badge/License-Elastic%202.0-green.svg)
+[![Crates.io downloads](https://img.shields.io/crates/d/wp-model-core)](https://crates.io/crates/wp-model-core)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Rust Edition](https://img.shields.io/badge/edition-2024-orange.svg)](https://doc.rust-lang.org/edition-guide/rust-2024/index.html)
 
 ## Overview
-`wp-model-core` is the typed data model that powers the Warp PASE stack. It defines the field, record, and value abstractions that upstream services rely on to validate input, serialize payloads, and reason about metadata in a consistent way. The crate ships as a library only and leans on familiar Rust tooling (`serde`, `chrono`, `ipnet`, `smol_str`) for ergonomics.
+`wp-model-core` is the typed data model that powers the Warp PASE stack. It defines the field, record, and value abstractions that upstream services rely on to validate input, serialize payloads, and reason about metadata in a consistent way. The crate ships as a library only and leans on familiar Rust tooling (`serde`, `chrono`, `num-bigint`, `smol_str`) for ergonomics.
 
 ## Features
 - 20+ value variants (`Value::Bool`, `Value::Email`, `Value::IpNet`, etc.) backed by lightweight `smol_str` storage for short text fields.
