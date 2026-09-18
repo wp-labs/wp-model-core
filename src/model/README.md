@@ -27,7 +27,7 @@ pub enum Value {
     // 基础类型（实际代码命名）
     Bool(bool),
     Chars(String),
-    Digit(i64),
+    Int(i64),
     Float(f64),
     Time(DateTimeValue),
 
@@ -54,7 +54,7 @@ pub enum Value {
 pub enum DataType {
     Bool,
     Chars,
-    Digit,
+    Int,
     Float,
     Time,
     TimeRFC3339,

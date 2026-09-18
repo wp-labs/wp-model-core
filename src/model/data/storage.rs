@@ -49,7 +49,7 @@ pub enum ValueStorage {
 /// renamed.set_name("application_name");  // Only sets cur_name, no clone!
 ///
 /// // Create an owned field (for dynamic values)
-/// let dynamic_field = Field::new(DataType::Digit, "counter", Value::from(42));
+/// let dynamic_field = Field::new(DataType::Int, "counter", Value::from(42));
 /// let owned = FieldStorage::from_owned(dynamic_field);
 /// ```
 #[derive(Clone, Debug)]
@@ -91,7 +91,7 @@ impl FieldStorage {
     /// ```ignore
     /// use wp_model_core::model::{FieldStorage, Field, Value, DataType};
     ///
-    /// let field = Field::new(DataType::Digit, "count", Value::from(10));
+    /// let field = Field::new(DataType::Int, "count", Value::from(10));
     /// let storage = FieldStorage::from_owned(field);
     ///
     /// assert!(storage.is_owned());
@@ -350,8 +350,8 @@ impl RecordItem for FieldStorage {
 
 // Implement RecordItemFactory trait
 impl RecordItemFactory for FieldStorage {
-    fn from_digit<S: Into<FNameStr>>(name: S, val: i64) -> Self {
-        FieldStorage::from_owned(Field::from_digit(name, val))
+    fn from_int<S: Into<FNameStr>>(name: S, val: i64) -> Self {
+        FieldStorage::from_owned(Field::from_int(name, val))
     }
 
     fn from_ip<S: Into<FNameStr>>(name: S, ip: IpAddr) -> Self {
@@ -419,7 +419,7 @@ mod tests {
 
     #[test]
     fn test_field_storage_owned_variant() {
-        let field = Field::new(DataType::Digit, "test", Value::from(42));
+        let field = Field::new(DataType::Int, "test", Value::from(42));
         let storage = FieldStorage::from_owned(field);
 
         assert_eq!(storage.as_field().get_name(), "test");
@@ -436,7 +436,7 @@ mod tests {
         assert_eq!(owned1.get_name(), "shared_field");
 
         // Owned variant
-        let field2 = Field::new(DataType::Digit, "owned_field", Value::from(123));
+        let field2 = Field::new(DataType::Int, "owned_field", Value::from(123));
         let storage2 = FieldStorage::from_owned(field2);
         let owned2 = storage2.into_owned();
         assert_eq!(owned2.get_name(), "owned_field");
@@ -453,7 +453,7 @@ mod tests {
 
     #[test]
     fn test_from_owned() {
-        let field = Field::new(DataType::Digit, "count", Value::from(10));
+        let field = Field::new(DataType::Int, "count", Value::from(10));
         let storage = FieldStorage::from_owned(field);
 
         assert!(!storage.is_shared());
@@ -462,7 +462,7 @@ mod tests {
 
     #[test]
     fn test_display() {
-        let field = Field::new(DataType::Digit, "num", Value::from(42));
+        let field = Field::new(DataType::Int, "num", Value::from(42));
         let storage = FieldStorage::from_owned(field);
 
         let display = format!("{}", storage);
@@ -504,7 +504,7 @@ mod tests {
     #[test]
     fn test_serde_serialization() {
         let field1 = Field::new(DataType::Chars, "f1", Value::from("shared"));
-        let field2 = Field::new(DataType::Digit, "f2", Value::from(99));
+        let field2 = Field::new(DataType::Int, "f2", Value::from(99));
 
         let shared = FieldStorage::from_shared(Arc::new(field1));
         let owned = FieldStorage::from_owned(field2);
@@ -569,7 +569,7 @@ mod tests {
 
     #[test]
     fn test_is_owned() {
-        let field = Field::new(DataType::Digit, "x", Value::from(1));
+        let field = Field::new(DataType::Int, "x", Value::from(1));
         let owned = FieldStorage::from_owned(field.clone());
         let shared = FieldStorage::from_shared(Arc::new(field));
 

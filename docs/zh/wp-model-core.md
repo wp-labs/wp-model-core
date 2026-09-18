@@ -38,7 +38,7 @@ assert_eq!(shared.get_chars(), Some("alice"));
 ```
 
 创建方法（位于 `model/data/maker.rs`）：
-- `from_bool/from_chars/from_shared_chars/from_digit/from_float` 等基础类型构造。
+- `from_bool/from_chars/from_shared_chars/from_int/from_float` 等基础类型构造。
 - `from_ip/from_domain/from_url` 等语义类型构造。
 - `from_arr/from_obj` 支持复合类型。
 
@@ -48,7 +48,7 @@ assert_eq!(shared.get_chars(), Some("alice"));
 use wp_model_core::model::{DataField, DataRecord};
 
 let mut record = DataRecord::default();
-record.append(DataField::from_digit("age", 18));
+record.append(DataField::from_int("age", 18));
 record.append(DataField::from_bool("active", true));
 record.set_id(42); // 自动插入 wp_event_id（u64 转 i64，超界时忽略）
 
@@ -69,8 +69,8 @@ if let Some(field) = record.field("age") {
 ```rust
 use wp_model_core::model::Value;
 
-let v = Value::Digit(123);
-assert_eq!(v.tag(), "Digit");
+let v = Value::Int(123);
+assert_eq!(v.tag(), "Int");
 assert!(!v.is_empty());
 ```
 

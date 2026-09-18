@@ -1,3 +1,8 @@
+//! **NOT COMPILED**：本文件未挂进模块树（`model/mod.rs` 无 `mod compare;`，比较实现已迁到
+//! `orion_exp` 适配器），且 `orion_exp` 已不是本 crate 的依赖、`is_support` 的 `match` 也缺
+//! `Value::BigUint` 分支 —— 自 0.9.0 起就已失效。保留仅供迁移参考；**删改前请先确认是否
+//! 还需要它**（本次 `Value::Digit` → `Int` 的改名只是顺手保持一致，不构成它已被启用）。
+
 use crate::model::Value;
 use crate::{model::data::field::Field, traits::AsValueRef};
 use orion_exp::{CmpOperator, ValueComparator};
@@ -12,7 +17,7 @@ where
             Value::Chars(v) => v.to_string().is_support(op),
             Value::Symbol(v) => v.to_string().is_support(op),
             Value::Time(v) => v.is_support(op),
-            Value::Digit(v) => v.is_support(op),
+            Value::Int(v) => v.is_support(op),
             Value::Hex(v) => v.is_support(op),
             Value::Float(v) => v.is_support(op),
             Value::IpNet(v) => v.is_support(op),
@@ -42,7 +47,7 @@ where
             (Value::Symbol(v1), Value::Symbol(v2)) => v1.to_string().compare_with(&v2.to_string(), op),
             (Value::Time(v1), Value::Time(v2)) => v1.compare_with(v2, op),
             (Value::Bool(v1), Value::Bool(v2)) => v1.compare_with(v2, op),
-            (Value::Digit(v1), Value::Digit(v2)) => v1.compare_with(v2, op),
+            (Value::Int(v1), Value::Int(v2)) => v1.compare_with(v2, op),
             (Value::Hex(v1), Value::Hex(v2)) => v1.compare_with(v2, op),
             (Value::Float(v1), Value::Float(v2)) => v1.compare_with(v2, op),
             (Value::IpNet(v1), Value::IpNet(v2)) => v1.compare_with(v2, op),

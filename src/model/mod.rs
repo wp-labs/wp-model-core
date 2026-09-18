@@ -19,7 +19,7 @@ pub use data::field_ref::FieldRef;
 pub use data::storage::FieldStorage;
 pub use types::meta::{DataType, MetaErr};
 pub use types::value::{DateTimeValue, DomainT, EmailT, IdCardT, Maker, MobilePhoneT, UrlValue};
-pub use types::value::{DigitValue, FloatValue, HexT, IgnoreT, IpNetValue};
+pub use types::value::{FloatValue, HexT, IgnoreT, IntValue, IpNetValue};
 
 /// 字段名称类型
 /// 当前实现：SmolStr（小字符串优化，≤22字节内联存储）

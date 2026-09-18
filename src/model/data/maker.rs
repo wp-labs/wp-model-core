@@ -39,8 +39,8 @@ impl<T> Field<T>
 where
     T: Maker<i64>,
 {
-    pub fn from_digit<S: Into<FNameStr>>(name: S, val: i64) -> Self {
-        Self::new(DataType::Digit, name.into(), T::make(val))
+    pub fn from_int<S: Into<FNameStr>>(name: S, val: i64) -> Self {
+        Self::new(DataType::Int, name.into(), T::make(val))
     }
 }
 impl<T> Field<T>
@@ -176,7 +176,7 @@ impl Value {
             Value::Bool(_) => "Bool",
             Value::Chars(_) => "Chars",
             Value::Symbol(_) => "Symbol",
-            Value::Digit(_) => "Digit",
+            Value::Int(_) => "Int",
             Value::BigUint(_) => "BigUint",
             Value::Time(_) => "Time",
             Value::Hex(_) => "Hex",
@@ -200,7 +200,7 @@ impl Value {
             | Value::IpNet(_)
             | Value::IpAddr(_)
             | Value::Float(_)
-            | Value::Digit(_)
+            | Value::Int(_)
             | Value::BigUint(_)
             | Value::Bool(_)
             | Value::Hex(_) => false,
@@ -254,11 +254,11 @@ mod tests {
     }
 
     #[test]
-    fn test_field_from_digit() {
-        let field: DataField = Field::from_digit("count", 42);
+    fn test_field_from_int() {
+        let field: DataField = Field::from_int("count", 42);
         assert_eq!(field.get_name(), "count");
-        assert_eq!(field.meta, DataType::Digit);
-        assert_eq!(field.value, Value::Digit(42));
+        assert_eq!(field.meta, DataType::Int);
+        assert_eq!(field.value, Value::Int(42));
     }
 
     #[test]
@@ -351,10 +351,10 @@ mod tests {
 
     #[test]
     fn test_field_from_arr_with_elements() {
-        let arr = vec![Field::from_digit("item", 1), Field::from_digit("item", 2)];
+        let arr = vec![Field::from_int("item", 1), Field::from_int("item", 2)];
         let field: DataField = Field::from_arr("numbers", arr);
         assert_eq!(field.get_name(), "numbers");
-        assert_eq!(field.meta, DataType::Array("digit".into()));
+        assert_eq!(field.meta, DataType::Array("int".into()));
     }
 
     #[test]
@@ -382,7 +382,7 @@ mod tests {
         assert_eq!(Value::Bool(true).tag(), "Bool");
         assert_eq!(Value::Chars(FValueStr::from("x")).tag(), "Chars");
         assert_eq!(Value::Symbol(SmolStr::from("x")).tag(), "Symbol");
-        assert_eq!(Value::Digit(1).tag(), "Digit");
+        assert_eq!(Value::Int(1).tag(), "Int");
         assert_eq!(Value::Float(1.0).tag(), "Float");
         assert_eq!(Value::Hex(HexT(0)).tag(), "Hex");
         assert_eq!(Value::Ignore(IgnoreT::default()).tag(), "Ignore");
@@ -410,7 +410,7 @@ mod tests {
     fn test_is_empty_always_false() {
         // These types are never considered empty
         assert!(!Value::Bool(false).is_empty());
-        assert!(!Value::Digit(0).is_empty());
+        assert!(!Value::Int(0).is_empty());
         assert!(!Value::Float(0.0).is_empty());
         assert!(!Value::Hex(HexT(0)).is_empty());
     }
@@ -449,7 +449,7 @@ mod tests {
         assert!(Value::Obj(ObjectValue::new()).is_empty());
 
         // Non-empty
-        let arr = vec![Field::from_digit("x", 1)];
+        let arr = vec![Field::from_int("x", 1)];
         assert!(!Value::Array(arr.into_iter().collect()).is_empty());
     }
 }

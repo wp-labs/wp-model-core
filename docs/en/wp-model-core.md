@@ -38,7 +38,7 @@ assert_eq!(shared.get_chars(), Some("alice"));
 ```
 
 Factory methods live in `model/data/maker.rs`:
-- `from_bool`, `from_chars`, `from_shared_chars`, `from_digit`, `from_float` for primitives.
+- `from_bool`, `from_chars`, `from_shared_chars`, `from_int`, `from_float` for primitives.
 - `from_ip`, `from_domain`, `from_url`, etc. for semantic types.
 - `from_arr`, `from_obj` for composite values.
 
@@ -48,7 +48,7 @@ Factory methods live in `model/data/maker.rs`:
 use wp_model_core::model::{DataField, DataRecord};
 
 let mut record = DataRecord::default();
-record.append(DataField::from_digit("age", 18));
+record.append(DataField::from_int("age", 18));
 record.append(DataField::from_bool("active", true));
 record.set_id(42); // Inserts wp_event_id (u64 → i64; silently skips on overflow)
 
@@ -69,8 +69,8 @@ Notes:
 ```rust
 use wp_model_core::model::Value;
 
-let v = Value::Digit(123);
-assert_eq!(v.tag(), "Digit");
+let v = Value::Int(123);
+assert_eq!(v.tag(), "Int");
 assert!(!v.is_empty());
 ```
 

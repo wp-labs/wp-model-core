@@ -11,8 +11,8 @@ pub enum DataType {
     Symbol,
     #[serde(rename = "peek_symbol")]
     PeekSymbol,
-    #[serde(rename = "digit")]
-    Digit,
+    #[serde(rename = "int")]
+    Int,
     /// 任意精度无符号整数（配合 `Value::BigUint`，十进制字符串存储/绑定）
     #[serde(rename = "bigint")]
     BigInt,
@@ -86,7 +86,7 @@ pub enum DataType {
 }
 
 pub const CHARS: &str = "chars";
-pub const DIGIT: &str = "digit";
+pub const INT: &str = "int";
 pub const BIGINT: &str = "bigint";
 pub const BOOL: &str = "bool";
 pub const FLOAT: &str = "float";
@@ -171,7 +171,7 @@ impl DataType {
             CHARS => Ok(DataType::Chars),
             SYMBOL => Ok(DataType::Symbol),
             PEEK_SYMBOL => Ok(DataType::PeekSymbol),
-            DIGIT => Ok(DataType::Digit),
+            INT => Ok(DataType::Int),
             BIGINT => Ok(DataType::BigInt),
             FLOAT => Ok(DataType::Float),
             AUTO => Ok(DataType::Auto),
@@ -236,7 +236,7 @@ impl DataType {
             DataType::Chars => CHARS,
             DataType::Symbol => SYMBOL,
             DataType::PeekSymbol => PEEK_SYMBOL,
-            DataType::Digit => DIGIT,
+            DataType::Int => INT,
             DataType::BigInt => BIGINT,
             DataType::Float => FLOAT,
             DataType::HttpRequest => HTTP_REQUEST,
@@ -279,7 +279,7 @@ mod tests {
     fn test_from_primitive_types() {
         assert_eq!(DataType::from("bool").unwrap(), DataType::Bool);
         assert_eq!(DataType::from("chars").unwrap(), DataType::Chars);
-        assert_eq!(DataType::from("digit").unwrap(), DataType::Digit);
+        assert_eq!(DataType::from("int").unwrap(), DataType::Int);
         assert_eq!(DataType::from("float").unwrap(), DataType::Float);
         assert_eq!(DataType::from("symbol").unwrap(), DataType::Symbol);
         assert_eq!(DataType::from("auto").unwrap(), DataType::Auto);
@@ -386,10 +386,10 @@ mod tests {
             DataType::to_arr("array/").unwrap(),
             DataType::Array("auto".into())
         );
-        // "array/digit" -> Array("digit")
+        // "array/int" -> Array("int")
         assert_eq!(
-            DataType::to_arr("array/digit").unwrap(),
-            DataType::Array("digit".into())
+            DataType::to_arr("array/int").unwrap(),
+            DataType::Array("int".into())
         );
         assert_eq!(
             DataType::to_arr("array/chars").unwrap(),
@@ -429,22 +429,19 @@ mod tests {
     fn test_static_name() {
         assert_eq!(DataType::Bool.static_name(), "bool");
         assert_eq!(DataType::Chars.static_name(), "chars");
-        assert_eq!(DataType::Digit.static_name(), "digit");
+        assert_eq!(DataType::Int.static_name(), "int");
         assert_eq!(DataType::Float.static_name(), "float");
         assert_eq!(DataType::Time.static_name(), "time");
         assert_eq!(DataType::IP.static_name(), "ip");
         assert_eq!(DataType::Ignore.static_name(), "_");
-        assert_eq!(DataType::Array("digit".into()).static_name(), "array");
+        assert_eq!(DataType::Array("int".into()).static_name(), "array");
     }
 
     #[test]
     fn test_display() {
         assert_eq!(format!("{}", DataType::Bool), "bool");
         assert_eq!(format!("{}", DataType::Chars), "chars");
-        assert_eq!(
-            format!("{}", DataType::Array("digit".into())),
-            "array/digit"
-        );
+        assert_eq!(format!("{}", DataType::Array("int".into())), "array/int");
     }
 
     #[test]
@@ -467,7 +464,7 @@ mod tests {
 
         // Should return true
         assert!(DataType::Bool.parse_patten_first());
-        assert!(DataType::Digit.parse_patten_first());
+        assert!(DataType::Int.parse_patten_first());
         assert!(DataType::IP.parse_patten_first());
         assert!(DataType::Time.parse_patten_first());
     }
@@ -482,7 +479,9 @@ mod tests {
         let types = vec![
             DataType::Bool,
             DataType::Chars,
-            DataType::Digit,
+            DataType::Int,
+            DataType::BigInt,
+            DataType::Float,
             DataType::Array("ip".into()),
         ];
         for dt in types {
@@ -490,5 +489,30 @@ mod tests {
             let parsed: DataType = serde_json::from_str(&json).unwrap();
             assert_eq!(dt, parsed);
         }
+    }
+
+    /// 0.10.0 改名契约：`digit` → `int`。锁定解析名、显示名与 wire 名，以及「旧名被拒」。
+    ///
+    /// 这些断言是**故意**的破坏性契约：`DataType` 是裸 derive，serde 名即类型名，没有
+    /// 兼容别名。若有人日后顺手把 `"digit"` 加回来当别名，本用例会失败。
+    #[test]
+    fn int_name_is_int_and_old_digit_is_rejected() {
+        // 解析：新名可用，旧名退休
+        assert_eq!(DataType::from("int").unwrap(), DataType::Int);
+        assert!(DataType::from("digit").is_err(), "旧名 digit 已退休");
+        // `int` 与 `bigint` 是两个类型，且不互为前缀误匹配（`from` 是精确 match）
+        assert_eq!(DataType::from("bigint").unwrap(), DataType::BigInt);
+        assert_ne!(
+            DataType::from("int").unwrap(),
+            DataType::from("bigint").unwrap()
+        );
+        // 静态名 / 显示 / wire 形态三者一致
+        assert_eq!(DataType::Int.static_name(), "int");
+        assert_eq!(format!("{}", DataType::Int), "int");
+        assert_eq!(serde_json::to_string(&DataType::Int).unwrap(), r#""int""#);
+        assert_eq!(
+            serde_json::to_string(&DataType::BigInt).unwrap(),
+            r#""bigint""#
+        );
     }
 }

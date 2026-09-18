@@ -10,7 +10,7 @@ impl Display for HexT {
         write!(f, "{:#X}", self.0)
     }
 }
-pub type DigitValue = i64;
+pub type IntValue = i64;
 pub type FloatValue = f64;
 pub type DateTimeValue = NaiveDateTime;
 use serde::{Deserialize, Serialize};

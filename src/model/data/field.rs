@@ -144,8 +144,8 @@ mod tests {
 
     #[test]
     fn test_field_new() {
-        let field: Field<i64> = Field::new(DataType::Digit, "count", 42i64);
-        assert_eq!(field.meta, DataType::Digit);
+        let field: Field<i64> = Field::new(DataType::Int, "count", 42i64);
+        assert_eq!(field.meta, DataType::Int);
         assert_eq!(field.get_name(), "count");
         assert_eq!(field.value, 42);
     }
@@ -159,16 +159,16 @@ mod tests {
 
     #[test]
     fn test_field_new_opt_with_name() {
-        let field: Field<i64> = Field::new_opt(DataType::Digit, Some("num".into()), 100);
+        let field: Field<i64> = Field::new_opt(DataType::Int, Some("num".into()), 100);
         assert_eq!(field.get_name(), "num");
         assert_eq!(field.value, 100);
     }
 
     #[test]
     fn test_field_new_opt_without_name() {
-        let field: Field<i64> = Field::new_opt(DataType::Digit, None, 50);
+        let field: Field<i64> = Field::new_opt(DataType::Int, None, 50);
         // When name is None, it should use meta's string representation
-        assert_eq!(field.get_name(), "digit");
+        assert_eq!(field.get_name(), "int");
         assert_eq!(field.value, 50);
     }
 
@@ -176,13 +176,13 @@ mod tests {
 
     #[test]
     fn test_field_get_name() {
-        let field: Field<i64> = Field::new(DataType::Digit, "test_name", 1);
+        let field: Field<i64> = Field::new(DataType::Int, "test_name", 1);
         assert_eq!(field.get_name(), "test_name");
     }
 
     #[test]
     fn test_field_clone_name() {
-        let field: Field<i64> = Field::new(DataType::Digit, "original", 1);
+        let field: Field<i64> = Field::new(DataType::Int, "original", 1);
         let cloned = field.clone_name();
         assert_eq!(cloned, "original");
         // Verify it's a new String, not a reference
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_field_set_name() {
-        let mut field: Field<i64> = Field::new(DataType::Digit, "old_name", 1);
+        let mut field: Field<i64> = Field::new(DataType::Int, "old_name", 1);
         field.set_name("new_name");
         assert_eq!(field.get_name(), "new_name");
     }
@@ -206,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_value_ref_trait() {
-        let field: Field<i64> = Field::new(DataType::Digit, "num", 42);
+        let field: Field<i64> = Field::new(DataType::Int, "num", 42);
         assert_eq!(field.value_ref(), &42);
     }
 
@@ -214,15 +214,15 @@ mod tests {
 
     #[test]
     fn test_field_get_value() {
-        let field: DataField = Field::new(DataType::Digit, "num", Value::Digit(99));
-        assert_eq!(field.get_value(), &Value::Digit(99));
+        let field: DataField = Field::new(DataType::Int, "num", Value::Int(99));
+        assert_eq!(field.get_value(), &Value::Int(99));
     }
 
     #[test]
     fn test_field_get_value_mut() {
-        let mut field: DataField = Field::new(DataType::Digit, "num", Value::Digit(10));
-        *field.get_value_mut() = Value::Digit(20);
-        assert_eq!(field.get_value(), &Value::Digit(20));
+        let mut field: DataField = Field::new(DataType::Int, "num", Value::Int(10));
+        *field.get_value_mut() = Value::Int(20);
+        assert_eq!(field.get_value(), &Value::Int(20));
     }
 
     #[test]
@@ -252,11 +252,11 @@ mod tests {
 
     #[test]
     fn test_field_to_rc() {
-        let field: Field<i64> = Field::new(DataType::Digit, "num", 42);
+        let field: Field<i64> = Field::new(DataType::Int, "num", 42);
         let rc_field: Field<Rc<i64>> = field.into();
 
         assert_eq!(rc_field.get_name(), "num");
-        assert_eq!(rc_field.meta, DataType::Digit);
+        assert_eq!(rc_field.meta, DataType::Int);
         assert_eq!(*rc_field.value, 42);
     }
 
@@ -274,9 +274,9 @@ mod tests {
 
     #[test]
     fn test_field_display() {
-        let field: Field<i64> = Field::new(DataType::Digit, "count", 42);
+        let field: Field<i64> = Field::new(DataType::Int, "count", 42);
         let display = format!("{}", field);
-        assert!(display.contains("digit"));
+        assert_eq!(display, "int(42)");
         assert!(display.contains("42"));
     }
 
@@ -292,20 +292,19 @@ mod tests {
 
     #[test]
     fn test_level_format_able() {
-        let field: Field<i64> = Field::new(DataType::Digit, "level_test", 123);
+        let field: Field<i64> = Field::new(DataType::Int, "level_test", 123);
         let mut output = String::new();
         use std::fmt::Write;
         // Use a simple formatter wrapper
         let _ = write!(output, "{}", field);
-        assert!(output.contains("digit"));
-        assert!(output.contains("123"));
+        assert_eq!(output, "int(123)");
     }
 
     // ========== Clone and PartialEq tests ==========
 
     #[test]
     fn test_field_clone() {
-        let field: Field<i64> = Field::new(DataType::Digit, "num", 42);
+        let field: Field<i64> = Field::new(DataType::Int, "num", 42);
         let cloned = field.clone();
 
         assert_eq!(field, cloned);
@@ -315,9 +314,9 @@ mod tests {
 
     #[test]
     fn test_field_partial_eq() {
-        let field1: Field<i64> = Field::new(DataType::Digit, "num", 42);
-        let field2: Field<i64> = Field::new(DataType::Digit, "num", 42);
-        let field3: Field<i64> = Field::new(DataType::Digit, "num", 99);
+        let field1: Field<i64> = Field::new(DataType::Int, "num", 42);
+        let field2: Field<i64> = Field::new(DataType::Int, "num", 42);
+        let field3: Field<i64> = Field::new(DataType::Int, "num", 99);
 
         assert_eq!(field1, field2);
         assert_ne!(field1, field3);
@@ -327,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_field_serde_roundtrip() {
-        let field: Field<i64> = Field::new(DataType::Digit, "serde_test", 123);
+        let field: Field<i64> = Field::new(DataType::Int, "serde_test", 123);
         let json = serde_json::to_string(&field).unwrap();
         let parsed: Field<i64> = serde_json::from_str(&json).unwrap();
 

@@ -10,7 +10,7 @@
 ## Features
 - 20+ value variants (`Value::Bool`, `Value::Email`, `Value::IpNet`, etc.) backed by lightweight `smol_str` storage for short text fields.
 - Rich metadata through `DataType`, ensuring every value carries run-time constraints (format, semantic type, array hints).
-- Field and record containers with ergonomic builders (`Field::from_digit`, `Record::set_id`) plus shared aliases (`DataField`, `DataRecord`).
+- Field and record containers with ergonomic builders (`Field::from_int`, `Record::set_id`) plus shared aliases (`DataField`, `DataRecord`).
 - Serde integration and deterministic formatting helpers (`LevelFormatAble`) for debugging or downstream logging.
 - `thiserror` based error types that keep callers away from `unwrap`/`expect` paths.
 
@@ -24,15 +24,15 @@
 ```toml
 # Cargo.toml
 dependencies:
-  wp-model-core = "0.7"
+  wp-model-core = "0.10"
 ```
 ```rust
 use wp_model_core::model::{DataField, DataRecord, DataType, Field, Value};
 
 let mut record = DataRecord::default();
-record.append(Field::from_digit("count", 42));
+record.append(Field::from_int("count", 42));
 record.append(Field::from_chars("status", "ok"));
-assert_eq!(record.get_value("count"), Some(&Value::Digit(42)));
+assert_eq!(record.get_value("count"), Some(&Value::Int(42)));
 ```
 
 ## Development Workflow

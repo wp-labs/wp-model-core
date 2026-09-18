@@ -17,7 +17,7 @@ pub use composite::{IgnoreT, ObjectValue};
 pub use custom::{IdCardT, MobilePhoneT};
 pub use network::{DomainT, EmailT, IpNetValue, UrlValue};
 pub use num_bigint::BigUint;
-pub use primitive::{DateTimeValue, DigitValue, FloatValue, HexT};
+pub use primitive::{DateTimeValue, FloatValue, HexT, IntValue};
 use serde::de::{self, Deserializer};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
@@ -46,7 +46,7 @@ pub enum Value {
     Bool(bool),
     Chars(FValueStr),
     Float(FloatValue),
-    Digit(DigitValue),
+    Int(IntValue),
     /// 任意精度无符号整数（十进制显示/序列化，无精度损失）。
     /// 用于 IPv4/IPv6 统一数值键等超出 i64 范围的整数场景。
     #[serde(with = "biguint_serde")]
@@ -189,7 +189,7 @@ impl From<&str> for Value {
 
 impl From<i64> for Value {
     fn from(value: i64) -> Self {
-        Self::Digit(value)
+        Self::Int(value)
     }
 }
 impl From<BigUint> for Value {
@@ -281,8 +281,8 @@ impl Display for Value {
             Value::Float(float) => {
                 write!(f, "{}", float)
             }
-            Value::Digit(digit) => {
-                write!(f, "{}", digit)
+            Value::Int(int) => {
+                write!(f, "{}", int)
             }
             Value::BigUint(v) => {
                 write!(f, "{}", v)
@@ -378,7 +378,7 @@ mod tests {
 
         // i64
         let v: Value = 42i64.into();
-        assert_eq!(v, Value::Digit(42));
+        assert_eq!(v, Value::Int(42));
 
         // f64
         let v: Value = 3.24f64.into();
@@ -399,6 +399,29 @@ mod tests {
             json,
             "{\"BigUint\":\"382824323044708348099391746388336347272\"}"
         );
+    }
+
+    /// 0.10.0 改名契约：整数变体 `Digit` → `Int`，且 `Value` 是裸 derive，
+    /// **变体名即 wire 名**（本次有意不加兼容别名）。
+    #[test]
+    fn int_variant_wire_name_is_int_and_precision_is_exact() {
+        assert_eq!(
+            serde_json::to_string(&Value::Int(42)).unwrap(),
+            r#"{"Int":42}"#
+        );
+        assert!(
+            serde_json::from_str::<Value>(r#"{"Digit":42}"#).is_err(),
+            "旧 wire 名 Digit 已退休（有意不向后兼容）"
+        );
+        assert_eq!(Value::Int(42).tag(), "Int");
+
+        // i64 极值 + epoch-ns 经 serde 往返逐位精确（不经 f64 量化）
+        for v in [i64::MIN, i64::MAX, 1_770_000_000_000_000_000] {
+            let json = serde_json::to_string(&Value::Int(v)).unwrap();
+            let back: Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(back, Value::Int(v), "Int({v}) 往返应逐位精确");
+            assert_eq!(format!("{}", Value::Int(v)), v.to_string());
+        }
     }
 
     #[test]
@@ -444,7 +467,7 @@ mod tests {
         assert_eq!(format!("{}", Value::Bool(true)), "true");
         assert_eq!(format!("{}", Value::Bool(false)), "false");
         assert_eq!(format!("{}", Value::Chars(FValueStr::from("test"))), "test");
-        assert_eq!(format!("{}", Value::Digit(123)), "123");
+        assert_eq!(format!("{}", Value::Int(123)), "123");
         assert_eq!(format!("{}", Value::Float(1.5)), "1.5");
         assert_eq!(format!("{}", Value::Symbol(SmolStr::from("sym"))), "sym");
         assert_eq!(format!("{}", Value::Ignore(IgnoreT::default())), "");
@@ -490,11 +513,11 @@ mod tests {
 
     #[test]
     fn test_as_value_ref_owned() {
-        let mut v = Value::Digit(100);
-        assert_eq!(v.as_value_ref(), &Value::Digit(100));
+        let mut v = Value::Int(100);
+        assert_eq!(v.as_value_ref(), &Value::Int(100));
 
-        *v.as_value_mutref() = Value::Digit(200);
-        assert_eq!(v, Value::Digit(200));
+        *v.as_value_mutref() = Value::Int(200);
+        assert_eq!(v, Value::Int(200));
     }
 
     #[test]
@@ -512,7 +535,7 @@ mod tests {
     #[test]
     fn test_maker_trait() {
         let v: Value = Maker::make(42i64);
-        assert_eq!(v, Value::Digit(42));
+        assert_eq!(v, Value::Int(42));
 
         let rc: Rc<Value> = Maker::make(FValueStr::from("hello"));
         assert_eq!(*rc, Value::Chars(FValueStr::from("hello")));

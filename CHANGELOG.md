@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0]
+
+### ⚠️ BREAKING CHANGES
+
+- **`Value::Digit` → `Value::Int`**：整数变体正名为 `Int`，与 `Value::Float` 成对；类型别名 `DigitValue` → `IntValue`。穷尽 `match Value` 的调用方需改名
+- **`Value` 的 serde wire 名随变体名改变**：`{"Digit":42}` → `{"Int":42}`（`Value` 是裸 `#[derive(Serialize)]`，本次**有意不加**兼容别名）；`Value::tag()` 由 `"Digit"` 改为 `"Int"`
+- **`DataType::Digit` → `DataType::Int`**：serde 名 `"digit"` → `"int"`，常量 `DIGIT` → `INT`，`DataType::from("digit")` / `to_arr("array/digit")` / `static_name()` / `Display` 一并改为 `int`。穷尽 `match DataType` 的调用方需改名
+- **公开构造器 `from_digit` → `from_int`**（`Field` / `RecordItemFactory` / `Record` / `FieldStorage`）
+
+### Changed
+
+- 文档与示例同步到新名（`README.md`、`docs/{zh,en}/wp-model-core.md`、`src/model/README.md`）
+
+### Tests
+
+- 锁定新的 wire 名与解析契约：`Value::Int` ↔ `{"Int":42}`（旧 `{"Digit":…}` 被拒）、`DataType::Int` ↔ `"int"`、`from("int")` 与 `from("bigint")` 不混淆、旧名 `"digit"` 被拒、`i64` 极值往返精确
+
 ## [0.9.0]
 
 ### ⚠️ BREAKING CHANGES
@@ -196,7 +213,8 @@ let owned_record = record.into_owned_record();
 - HTTP type support (request, status, agent, method)
 - Array type with subtype specification
 
-[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/wp-labs/wp-model-core/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/wp-labs/wp-model-core/compare/v0.8.9...v0.9.0
 [0.8.6]: https://github.com/wp-labs/wp-model-core/compare/v0.8.5...v0.8.6
 [0.8.5]: https://github.com/wp-labs/wp-model-core/compare/v0.8.4...v0.8.5

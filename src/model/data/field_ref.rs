@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn test_field_ref_no_cur_name() {
-        let field = Field::new(DataType::Digit, "count", Value::from(42));
+        let field = Field::new(DataType::Int, "count", Value::from(42));
         let storage = FieldStorage::from_owned(field);
 
         let field_ref = storage.field_ref();
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn test_field_ref_to_owned() {
         let mut storage =
-            FieldStorage::from_owned(Field::new(DataType::Digit, "count", Value::from(42)));
+            FieldStorage::from_owned(Field::new(DataType::Int, "count", Value::from(42)));
         storage.set_name("total");
 
         let field_ref = storage.field_ref();
@@ -245,11 +245,10 @@ mod tests {
 
     #[test]
     fn test_field_ref_display() {
-        let storage =
-            FieldStorage::from_owned(Field::new(DataType::Digit, "count", Value::from(42)));
+        let storage = FieldStorage::from_owned(Field::new(DataType::Int, "count", Value::from(42)));
 
         let display = format!("{}", storage.field_ref());
-        assert_eq!(display, "count=Digit(42)");
+        assert_eq!(display, "count=Int(42)");
     }
 
     #[test]

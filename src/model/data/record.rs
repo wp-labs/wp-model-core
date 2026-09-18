@@ -20,7 +20,7 @@ pub trait RecordItem {
 
 /// 为 Record 生成字段所需的工厂方法
 pub trait RecordItemFactory {
-    fn from_digit<S: Into<FNameStr>>(name: S, val: i64) -> Self;
+    fn from_int<S: Into<FNameStr>>(name: S, val: i64) -> Self;
     fn from_ip<S: Into<FNameStr>>(name: S, ip: IpAddr) -> Self;
     fn from_chars<N: Into<FNameStr>, Val: Into<FValueStr>>(name: N, val: Val) -> Self;
 }
@@ -183,8 +183,8 @@ impl<V> RecordItemFactory for Field<V>
 where
     V: Maker<i64> + Maker<FValueStr> + Maker<IpAddr>,
 {
-    fn from_digit<S: Into<FNameStr>>(name: S, val: i64) -> Self {
-        Field::from_digit(name, val)
+    fn from_int<S: Into<FNameStr>>(name: S, val: i64) -> Self {
+        Field::from_int(name, val)
     }
 
     fn from_ip<S: Into<FNameStr>>(name: S, ip: IpAddr) -> Self {
@@ -240,7 +240,7 @@ impl Record<FieldStorage> {
     /// use wp_model_core::model::{DataRecord, Field, Value, DataType};
     ///
     /// let mut record = DataRecord::default();
-    /// let field = Field::new(DataType::Digit, "count", Value::from(42));
+    /// let field = Field::new(DataType::Int, "count", Value::from(42));
     /// record.push_owned(field);
     /// ```
     pub fn push_owned(&mut self, field: Field<Value>) {
@@ -255,7 +255,7 @@ impl Record<FieldStorage> {
     /// use wp_model_core::model::{DataRecord, Field, Value, DataType};
     ///
     /// let mut record = DataRecord::default();
-    /// let field = Field::new(DataType::Digit, "x", Value::from(10));
+    /// let field = Field::new(DataType::Int, "x", Value::from(10));
     /// record.push_owned(field);
     ///
     /// let retrieved = record.field_at(0);
@@ -347,7 +347,7 @@ impl Record<FieldStorage> {
     /// let static_field = Arc::new(Field::new(DataType::Chars, "static", Value::from("val")));
     /// record.push_shared(static_field);
     ///
-    /// let dynamic_field = Field::new(DataType::Digit, "dynamic", Value::from(10));
+    /// let dynamic_field = Field::new(DataType::Int, "dynamic", Value::from(10));
     /// record.push_owned(dynamic_field);
     ///
     /// let (shared, owned) = record.storage_stats();
@@ -378,7 +378,7 @@ impl Record<FieldStorage> {
     /// use wp_model_core::model::{DataRecord, Field, Value, DataType};
     ///
     /// let mut record = DataRecord::default();
-    /// let field = Field::new(DataType::Digit, "x", Value::from(10));
+    /// let field = Field::new(DataType::Int, "x", Value::from(10));
     /// record.push_owned(field);
     ///
     /// let owned_record = record.into_owned_record();
@@ -407,7 +407,7 @@ mod tests {
     fn make_test_record() -> DataRecord {
         let fields = vec![
             FieldStorage::from_chars("name", "Alice"),
-            FieldStorage::from_digit("age", 30),
+            FieldStorage::from_int("age", 30),
             FieldStorage::from_ip("ip", IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))),
         ];
         Record::from(fields)
@@ -424,8 +424,8 @@ mod tests {
     #[test]
     fn test_record_from_vec() {
         let fields: Vec<FieldStorage> = vec![
-            FieldStorage::from_digit("x", 1),
-            FieldStorage::from_digit("y", 2),
+            FieldStorage::from_int("x", 1),
+            FieldStorage::from_int("y", 2),
         ];
         let record: DataRecord = Record::from(fields);
         assert_eq!(record.items.len(), 2);
@@ -459,7 +459,7 @@ mod tests {
 
         let age_field = record.get2("age");
         assert!(age_field.is_some());
-        assert_eq!(age_field.unwrap().get_meta(), &DataType::Digit);
+        assert_eq!(age_field.unwrap().get_meta(), &DataType::Int);
     }
 
     #[test]
@@ -468,7 +468,7 @@ mod tests {
 
         let age_value = record.get_value("age");
         assert!(age_value.is_some());
-        assert_eq!(age_value.unwrap(), &Value::Digit(30));
+        assert_eq!(age_value.unwrap(), &Value::Int(30));
 
         let missing = record.get_value("missing");
         assert!(missing.is_none());
@@ -483,10 +483,10 @@ mod tests {
 
         // Modify the value through mutable reference
         if let Some(f) = field {
-            *f.get_value_mut() = Value::Digit(31);
+            *f.get_value_mut() = Value::Int(31);
         }
 
-        assert_eq!(record.get_value("age"), Some(&Value::Digit(31)));
+        assert_eq!(record.get_value("age"), Some(&Value::Int(31)));
     }
 
     // ========== Record mutation tests ==========
@@ -496,7 +496,7 @@ mod tests {
         let mut record: DataRecord = Record::default();
         assert_eq!(record.items.len(), 0);
 
-        record.append(FieldStorage::from_digit("count", 100));
+        record.append(FieldStorage::from_int("count", 100));
         assert_eq!(record.items.len(), 1);
 
         record.append(FieldStorage::from_chars("msg", "hello"));
@@ -505,10 +505,10 @@ mod tests {
 
     #[test]
     fn test_record_merge() {
-        let mut record1: DataRecord = Record::from(vec![FieldStorage::from_digit("a", 1)]);
+        let mut record1: DataRecord = Record::from(vec![FieldStorage::from_int("a", 1)]);
         let record2: DataRecord = Record::from(vec![
-            FieldStorage::from_digit("b", 2),
-            FieldStorage::from_digit("c", 3),
+            FieldStorage::from_int("b", 2),
+            FieldStorage::from_int("c", 3),
         ]);
 
         record1.merge(record2);
@@ -583,10 +583,10 @@ mod tests {
 
     #[test]
     fn test_field_record_item_get_value_mut() {
-        let mut field: DataField = Field::from_digit("num", 10);
+        let mut field: DataField = Field::from_int("num", 10);
 
-        *field.get_value_mut() = Value::Digit(20);
-        assert_eq!(field.get_value(), &Value::Digit(20));
+        *field.get_value_mut() = Value::Int(20);
+        assert_eq!(field.get_value(), &Value::Int(20));
     }
 
     // ========== FieldStorage RecordItem tests ==========
@@ -603,18 +603,18 @@ mod tests {
 
     #[test]
     fn test_field_storage_record_item_get_value_mut() {
-        let mut storage: FieldStorage = FieldStorage::from_digit("num", 10);
+        let mut storage: FieldStorage = FieldStorage::from_int("num", 10);
 
-        *storage.get_value_mut() = Value::Digit(20);
-        assert_eq!(storage.get_value(), &Value::Digit(20));
+        *storage.get_value_mut() = Value::Int(20);
+        assert_eq!(storage.get_value(), &Value::Int(20));
     }
 
     // ========== RecordItemFactory trait tests ==========
 
     #[test]
     fn test_record_item_factory() {
-        let digit: FieldStorage = <FieldStorage as RecordItemFactory>::from_digit("n", 42);
-        assert_eq!(digit.get_meta(), &DataType::Digit);
+        let int: FieldStorage = <FieldStorage as RecordItemFactory>::from_int("n", 42);
+        assert_eq!(int.get_meta(), &DataType::Int);
 
         let ip: FieldStorage = <FieldStorage as RecordItemFactory>::from_ip(
             "addr",
@@ -654,7 +654,7 @@ mod tests {
     #[test]
     fn test_push_owned() {
         let mut record = DataRecord::default();
-        let field = Field::new(DataType::Digit, "dynamic", Value::from(42));
+        let field = Field::new(DataType::Int, "dynamic", Value::from(42));
 
         record.push_owned(field);
         assert_eq!(record.items.len(), 1);
@@ -692,9 +692,9 @@ mod tests {
         )));
 
         // Add owned fields
-        record.push_owned(Field::new(DataType::Digit, "o1", Value::from(1)));
-        record.push_owned(Field::new(DataType::Digit, "o2", Value::from(2)));
-        record.push_owned(Field::new(DataType::Digit, "o3", Value::from(3)));
+        record.push_owned(Field::new(DataType::Int, "o1", Value::from(1)));
+        record.push_owned(Field::new(DataType::Int, "o2", Value::from(2)));
+        record.push_owned(Field::new(DataType::Int, "o3", Value::from(3)));
 
         let (shared, owned) = record.storage_stats();
         assert_eq!(shared, 2);
@@ -709,7 +709,7 @@ mod tests {
             "s",
             Value::from("shared"),
         )));
-        record.push_owned(Field::new(DataType::Digit, "o", Value::from(10)));
+        record.push_owned(Field::new(DataType::Int, "o", Value::from(10)));
 
         let owned_record = record.into_owned_record();
         assert_eq!(owned_record.items.len(), 2);
@@ -782,7 +782,7 @@ mod tests {
     fn test_get_field_by_name() {
         let record = DataRecord::from(vec![
             DataField::from_chars("name", "Alice"),
-            DataField::from_digit("age", 30),
+            DataField::from_int("age", 30),
         ]);
 
         let field = record.get_field("name");
