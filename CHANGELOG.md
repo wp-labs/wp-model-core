@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.11.0]
+## [0.10.1]
+
+> 注：本版号是 patch，但**含破坏性变更**（见下，`DataType::Array` 载荷类型改变）。
+> 严格按语义化版本应为 `0.11.0`；项目决定把未发布的 0.10.1 直接包含它，故保留 patch 号。
 
 ### ⚠️ BREAKING CHANGES
 
@@ -237,8 +240,8 @@ let owned_record = record.into_owned_record();
 - HTTP type support (request, status, agent, method)
 - Array type with subtype specification
 
-[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.11.0...HEAD
-[0.11.0]: https://github.com/wp-labs/wp-model-core/compare/v0.10.0...v0.11.0
+[Unreleased]: https://github.com/wp-labs/wp-model-core/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/wp-labs/wp-model-core/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/wp-labs/wp-model-core/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/wp-labs/wp-model-core/compare/v0.8.9...v0.9.0
 [0.8.6]: https://github.com/wp-labs/wp-model-core/compare/v0.8.5...v0.8.6
