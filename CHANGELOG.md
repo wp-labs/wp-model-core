@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.2]
+
+### ⚠️ BREAKING CHANGES
+
+- **`wp_event_id` 改为确定性布局 `秒(32) | 实例号(10) | 每秒计数器(22)`**。
+  此前的 `next_wp_event_id()` 返回「随机 63 位种子 + 进程内计数器」，跨实例虽无结构关联，
+  但同秒启动的多实例仍可能产生重叠区间，而且 ID 无法反解时间。现在：时间位于高位
+  （`ORDER BY wp_event_id` 即时间序，覆盖到 2106-02-07），实例号居中，计数器每秒归零。
+  旧 ID 与新 ID 混存不报错（`wp_event_id` 一直是字符串字段），但交界处不再有序。
+
+### Added
+
+- **`WP_INS_ID` 实例号**：取值 `100..=1123`（`INS_ID_BASE..=INS_ID_MAX`，1024 个实例），
+  未设置时回退默认值 `100`。读取路径与 `WP_GLOBAL_TAGS` 完全一致 —— 进程环境优先，
+  其次 work root 的 `.env` / `.warp_parse/.env`。
+- **`init_instance_id_from_env()`**：启动期校验入口。非法值（非数字、越界、首次发号后被改动）
+  返回错误，调用方应终止启动，避免多个实例静默共用同一个 lane。
+- **`compose_event_id()` / `decompose_event_id()`**：按布局拼装/拆解（时间、实例号、计数器），
+  便于下游反解与排查。
+- 布局常量：`SECS_BITS` / `LANE_BITS` / `COUNTER_BITS` / `MAX_SECS` / `MAX_LANE` /
+  `MAX_COUNTER` / `INS_ID_BASE` / `INS_ID_MAX` / `WP_INS_ID_ENV`。
+
+### Changed
+
+- **每秒计数器 4,194,304 条**：单实例压测 200 万 EPS 仍有 2.1 倍余量。超出时逻辑秒前进一格
+  （不 stall、不回绕），保证进程内严格单调。
+- **挂钟回拨保护**：取 `max(挂钟, 已用逻辑秒)`，回拨期间沿用逻辑秒继续累加计数器。
+- **启动对齐**：首次发号的逻辑秒 = 「首次发号所在整秒 + 1」，使同秒异常重启不会重放上一轮
+  用过的号。
+
+### Fixed
+
+- **多实例 `wp_event_id` 重复**：实例号互不相同的进程之间不再可能碰撞（时间位与计数器位
+  完全隔离在各自 lane 内）。
+
 ## [0.10.1]
 
 > 注：本版号是 patch，但**含破坏性变更**（见下，`DataType::Array` 载荷类型改变）。
